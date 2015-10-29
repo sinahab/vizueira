@@ -18961,39 +18961,93 @@ var Tree = require('../structures/tree');
 var Divisible = React.createClass({ displayName: "Divisible",
   getInitialState: function getInitialState() {
     var cellStructure = new Tree(this.props.divisions, 1);
-    cellStructure.root = { size: this.props.size, level: 0, n: 0 };
+    cellStructure.root = {
+      coords: {
+        x: 0,
+        y: 0
+      },
+      dimensions: {
+        width: this.props.size,
+        height: this.props.size
+      },
+      level: 0,
+      n: 0,
+      shouldRender: true };
     return { cells: cellStructure, divisions: this.props.divisions };
   },
 
   render: function render() {
-    return React.createElement("g", null, this.state.cells.depthTraversalCall((function (arg) {
-      this.renderCell(arg);
-    }).bind(this)), console.log(this.state.cells), this.state.cells.map(function (cell, index) {
-      if (cell !== undefined) {
+    return React.createElement("g", null, this.state.cells.map(function (cell, index) {
+      if (cell !== undefined && cell.shouldRender) {
         return this.renderCell(cell, index);
       }
     }, this));
   },
   createChildren: function createChildren(cell) {
-    var children = [];
-    var n = cell.n;
-    var level = cell.level;
-
-    this.state.cells.goTo(n, level);
-
-    var size = this.state.cells.node.size / this.state.divisions;
-    for (var i = 0; i < this.state.divisions; i++) {
-      children.push({ size: size, level: level + 1, n: this.state.cells.firstChildNode + i });
-    }
-    this.state.cells.children = children;
+    this.state.cells.goTo(cell.n, cell.level);
+    this.state.cells.children = this.divide.call(this.state.cells.node);
+    this.state.cells.node.shouldRender = false;
     this.state.cells.root;
     return this.state.cells;
+  },
+  divide: function divide() {
+    var children = [];
+    var current = this.state.cells.node;
+    var space = this.determineSpace(current);
+    for (var i = 0; i < this.state.divisions; i++) {
+      children.push({
+        dimensions: space[i].dimensions,
+        level: current.level + 1,
+        n: this.state.cells.firstChildNode + i,
+        coords: space[i].coords,
+        shouldRender: true
+      });
+    }
+    return children;
+  },
+  determineSpace: function determineSpace(cell) {
+    var startingX = cell.coords.x,
+        startingY = cell.coords.y,
+        startingWidth = cell.dimensions.width,
+        startingHeight = cell.dimensions.height,
+        mod = 1.0 / this.state.divisions;
+
+    var modifications = this.determineMods(),
+        returned = [];
+
+    var modX = startingWidth * (mod * modifications[0]),
+        modY = startingHeight * (mod * modifications[1]),
+        modWidth = startingWidth * (1.0 - mod * modifications[0]),
+        modHeight = startingHeight * (1.0 - mod * modifications[1]);
+    console.log(modWidth);
+    console.log(modHeight);
+    for (var i = 0; i < this.state.divisions; i++) {
+      returned.push({
+        coords: {
+          x: startingX + i * modX,
+          y: startingY + i * modY
+        },
+        dimensions: {
+          width: modWidth,
+          height: modHeight
+        }
+      });
+    }
+    console.log(returned);
+    return returned;
+  },
+  determineMods: function determineMods() {
+    var seed = Math.random(),
+        returned = [];
+    returned[0] = seed > 0.5 ? 1 : 0;
+    returned[1] = 1 - returned[0];
+    return returned;
   },
   handleClick: function handleClick(cell) {
     this.setState({ cells: this.createChildren(cell) });
   },
   renderCell: function renderCell(cell) {
-    return React.createElement("rect", { onClick: this.handleClick.bind(this, cell), x: 0, y: 0, width: cell.size, height: cell.size, fill: "white", stroke: "blue", strokeWidth: "1", key: cell.level + '' + cell.n });
+    return React.createElement("rect", { onClick: this.handleClick.bind(this, cell), x: cell.coords.x, y: cell.coords.y, width: cell.dimensions.width, height: cell.dimensions.height, fill: "white", stroke: "blue", strokeWidth: "1", key: cell.level + '' + cell.n });
   }
 });
 ReactDOM.render(React.createElement(Divisible, { size: 100, divisions: 2 }), document.getElementById("game"));
