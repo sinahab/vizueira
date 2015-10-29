@@ -1,11 +1,24 @@
 module.exports = {
   js: [
     {
-      src: [ 'src/components/*.jsx' ],
+      src: ['src/components/*.jsx' ],
       dest: 'dist/modules',
       name: 'components.js',
       watch: 'process-components',
-      module: 'components'
+      module: 'components',
+      transform: ['reactify', 'babelify'],
+      extensions: ['.js', '.jsx'],
+      standalone: 'components.divisible'
+    },
+    {
+      src: ['src/structures/*.js' ],
+      dest: 'dist/modules',
+      name: 'structures.js',
+      watch: 'process-structures',
+      module: 'structures',
+      transform: ['babelify'],
+      extensions: ['.js'],
+      standalone: 'structures.tree'
     }
   ],
   karma: {

@@ -16,8 +16,9 @@ gulp.task('groups', function(){
         gulp.task( config[taskNumber].watch, function() {
             gulp.src( config[taskNumber].src )  
             .pipe(browserify({
-              transform: ['reactify', 'babelify'],
-              extensions: ['.js', '.jsx']
+              transform: config[taskNumber].transform,
+              extensions: config[taskNumber].extensions,
+              standalone: config[taskNumber].standalone || 'default'
             }))
             .pipe( concat( config[taskNumber].name ) )
             .pipe( gulp.dest( config[taskNumber].dest ) )

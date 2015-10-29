@@ -1,5 +1,6 @@
 var React = require('react');
 var ReactDOM = require('react-dom');
+var Tree = require('../structures/tree')
 
 var Divisible = React.createClass({
   getInitialState: function(){
