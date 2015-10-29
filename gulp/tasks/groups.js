@@ -6,9 +6,7 @@ var gulp        = require( 'gulp' ),
     browserify = require( 'gulp-browserify' ),
     config     = require( '../config/tasks' ).js;
 
-function concatenate(){
-    gulp.start('concat')
-}
+
 
 gulp.task('groups', function(){
     for( var i = 0; i< config.length; i++ ){
@@ -18,13 +16,13 @@ gulp.task('groups', function(){
             .pipe(browserify({
               transform: config[taskNumber].transform,
               extensions: config[taskNumber].extensions,
-              standalone: config[taskNumber].standalone || 'default'
+              standalone: config[taskNumber].standalone || false
             }))
             .pipe( concat( config[taskNumber].name ) )
             .pipe( gulp.dest( config[taskNumber].dest ) )
-            .on('end', concatenate );
+            .on('end', function(){console.log('ended')})
         });        
-      gulp.watch( config[taskNumber].src, [ config[taskNumber].watch ] );  
+        gulp.watch( config[taskNumber].src, [ config[taskNumber].watch ] );  
     }
 });
 

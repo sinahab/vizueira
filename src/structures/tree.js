@@ -36,7 +36,6 @@ class Tree extends Array {
 		let level=this._level, 
 				node=this._node,
 				index = this.locate( level, node );
-				this.deepen(index + 1)
 		return this[ this.locate( level, node ) ]
 	}
 
@@ -60,11 +59,12 @@ class Tree extends Array {
 		this.node = arg;
 	}
 	get children(){
-		this.deepen( this.lastChildIndex + 1 )
+		// this.deepen( this.lastChildIndex + 1 )
 		let children = this.slice( this.firstChildIndex, this.lastChildIndex + 1 );
 				return children
 	}
 	set children( vals ){
+		vals.length = this._branchCount;
 		this.deepen( this.lastChildIndex + 1 )	
 		vals.map(function( item, index ){
 			this[this.firstChildIndex+index] = item
@@ -96,6 +96,10 @@ class Tree extends Array {
 		this._level ++;
 		this._node = this.lastChildNode; 
 	}
+	toNth( index ){
+		this._level ++
+		this._node = this.firstChildNode + index;
+	}
 	toParent(){
 		this._level --;
 		this._node = Math.floor( this._node / this._branchCount );
@@ -105,6 +109,31 @@ class Tree extends Array {
 		this._node = node;
 		return this.node
 	}
+	depthTraversalCall( callback ){
+		callback( this.node )									
+		for( let i = 0; i< this._branchCount; i++ ){
+			this.toNth(i)
+			if( this.node !== undefined ){
+				this.depthTraversalCall(callback)
+			}
+			this.parent
+		}
+	}
+	depthTraversalSet( value ){
+		for( let i = 0; i< this._branchCount; i++ ){
+			this.toNth(i)
+			if( this.node !== undefined ){
+				if( typeof value == 'function'){
+					this.node = value()
+				} else {
+					this.node = value
+				}
+				this.depthTraversal(value)
+			}
+			this.parent
+		}
+	}	
+
 
 }
 module.exports = Tree

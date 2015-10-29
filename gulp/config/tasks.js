@@ -7,8 +7,7 @@ module.exports = {
       watch: 'process-components',
       module: 'components',
       transform: ['reactify', 'babelify'],
-      extensions: ['.js', '.jsx'],
-      standalone: 'components.divisible'
+      extensions: ['.js', '.jsx']
     },
     {
       src: ['src/structures/*.js' ],

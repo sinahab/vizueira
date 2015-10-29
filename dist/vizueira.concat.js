@@ -18960,28 +18960,20 @@ var Tree = _dereq_('../structures/tree');
 
 var Divisible = React.createClass({ displayName: "Divisible",
   getInitialState: function getInitialState() {
-    return { size: this.props.size };
+    cellStructure = new Tree(2, 1);
+    cellStructure.root = { size: this.props.size, x: 0, y: 0 };
+    return { cells: cellSructure };
   },
 
   render: function render() {
-    return React.createElement("rect", { onClick: this.handleClick, x: "0", y: "0", width: this.state.size, height: this.state.size });
+    return React.createElement("g", null, this.state.cells.map(function (cell, index) {
+      React.createElement("rect", { onClick: this.handleClick, x: cell.x, y: cell.y, width: cell.size, height: cell.size, key: index });
+    }));
   },
-
-  shouldComponentUpdate: function shouldComponentUpdate() {
-    console.log("rendering halves");
-    this.renderOtherHalf();
-    return true;
-  },
-
   handleClick: function handleClick(event) {
     this.setState({ size: this.state.size / 2 });
-  },
-
-  renderOtherHalf: function renderOtherHalf() {
-    return React.createElement(Divisible, { size: this.state.size });
   }
 });
-
 ReactDOM.render(React.createElement(Divisible, { size: 100 }), document.getElementById("game"));
 
 },{"../structures/tree":159,"react":157,"react-dom":2}],159:[function(_dereq_,module,exports){
@@ -19321,7 +19313,7 @@ var Tree = (function (_Array) {
 	}, {
 		key: "children",
 		get: function get() {
-			this.deepen(this.lastChildIndex + 1);
+			// this.deepen( this.lastChildIndex + 1 )
 			var children = this.slice(this.firstChildIndex, this.lastChildIndex + 1);
 			return children;
 		},

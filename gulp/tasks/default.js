@@ -4,5 +4,5 @@ var gulp   = require( 'gulp' ),
 
 gulp.task( 'default', function() {
     gulp.start( 'groups' );
-    gulp.start( 'karma' );
+    // gulp.start( 'karma' );
 });
