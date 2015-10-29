@@ -3,24 +3,27 @@ var ReactDOM = require('react-dom');
 
 var Divisible = React.createClass({
   getInitialState: function(){
-    return { cells: 1 }
+    return { size: this.props.size }
   },
 
   render: function(){
-    console.log(this.state.cells)
-    return <svg height={ this.props.size } width={ this.props.size }>
-            <rect onClick={this.handleClick} x="0" y="0" width={ this.props.size } height={ this.props.size } />
-           </svg>;
+    return <rect onClick={this.handleClick} x="0" y="0" width={ this.state.size }height={this.state.size} />
+  },
+
+  shouldComponentUpdate: function() {
+    console.log("rendering halves");
+    this.renderOtherHalf();
+    return(true);
   },
 
   handleClick: function(event) {
-    this.setState({ cells: this.state.cells * 2 })
+    this.setState({ size: this.state.size / 2 })
   },
 
-  renderCells: function(){
-    return <rect onClick={this.handleClick} x="0" y="0" width={ this.props.size } height={ this.props.size } />
+  renderOtherHalf: function() {
+    return <Divisible size={this.state.size}></Divisible>
   }
 });
 
-ReactDOM.render( <Divisible size={100} ></Divisible>,
+ReactDOM.render( <Divisible size={100}></Divisible>,
   document.getElementById( "game" ));
