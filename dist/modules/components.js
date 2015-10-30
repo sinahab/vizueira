@@ -18969,8 +18969,8 @@ var Divisible = React.createClass({ displayName: "Divisible",
         y: 0
       },
       dimensions: {
-        width: this.props.size,
-        height: this.props.size
+        width: this.props.width,
+        height: this.props.height
       },
       level: 0,
       n: 0,
@@ -19056,7 +19056,6 @@ var Divisible = React.createClass({ displayName: "Divisible",
         }
       });
     }
-    console.log(returned);
     return returned;
   },
   determineMods: function determineMods() {
@@ -19070,10 +19069,10 @@ var Divisible = React.createClass({ displayName: "Divisible",
     this.setState({ cells: this.createChildren(cell) });
   },
   renderCell: function renderCell(cell) {
-    return React.createElement("rect", { onClick: this.handleClick.bind(this, cell), x: cell.coords.x, y: cell.coords.y, width: cell.dimensions.width, height: cell.dimensions.height, fill: cell.color, stroke: "black", strokeWidth: "1", key: cell.level + '' + cell.n });
+    return React.createElement("rect", { onClick: this.handleClick.bind(this, cell), x: cell.coords.x, y: cell.coords.y, width: cell.dimensions.width, height: cell.dimensions.height, fill: cell.color, stroke: "black", strokeWidth: "4", key: cell.level + '' + cell.n });
   }
 });
-ReactDOM.render(React.createElement(Divisible, { size: 100, divisions: 2 }), document.getElementById("game"));
+ReactDOM.render(React.createElement(Divisible, { width: 300, height: 600, divisions: 2 }), document.getElementById("game"));
 module.exports = 'test';
 
 },{"../structures/color":159,"../structures/tree":160,"react":157,"react-dom":2}],159:[function(require,module,exports){

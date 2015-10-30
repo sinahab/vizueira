@@ -13,8 +13,8 @@ var Divisible = React.createClass({
         y: 0
       },
       dimensions: {
-        width: this.props.size,
-        height: this.props.size
+        width: this.props.width,
+        height: this.props.height
       },
       level: 0, 
       n: 0, 
@@ -104,7 +104,6 @@ var Divisible = React.createClass({
         }
       })
     }
-    console.log(returned)
     return returned
 
   },
@@ -119,9 +118,9 @@ var Divisible = React.createClass({
     this.setState({ cells: this.createChildren( cell ) })
   },
   renderCell: function( cell ){
-    return <rect onClick={this.handleClick.bind(this, cell )} x={cell.coords.x} y={cell.coords.y} width={cell.dimensions.width} height={cell.dimensions.height} fill={cell.color} stroke="black" strokeWidth="1" key={ cell.level + '' + cell.n } />
+    return <rect onClick={this.handleClick.bind(this, cell )} x={cell.coords.x} y={cell.coords.y} width={cell.dimensions.width} height={cell.dimensions.height} fill={cell.color} stroke="black" strokeWidth="4" key={ cell.level + '' + cell.n } />
   }
 });
-ReactDOM.render( <Divisible size={100} divisions={2}></Divisible>,
+ReactDOM.render( <Divisible width={300} height={600} divisions={2}></Divisible>,
   document.getElementById( "game" ));
 module.exports = 'test'
