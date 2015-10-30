@@ -18957,10 +18957,12 @@ module.exports = require('./lib/React');
 var React = require('react');
 var ReactDOM = require('react-dom');
 var Tree = require('../structures/tree');
+var Color = require('../structures/color');
 
 var Divisible = React.createClass({ displayName: "Divisible",
   getInitialState: function getInitialState() {
     var cellStructure = new Tree(this.props.divisions, 1);
+    var color = new Color(255, 255, 255, 1);
     cellStructure.root = {
       coords: {
         x: 0,
@@ -18972,8 +18974,9 @@ var Divisible = React.createClass({ displayName: "Divisible",
       },
       level: 0,
       n: 0,
+      color: color.rgba(),
       shouldRender: true };
-    return { cells: cellStructure, divisions: this.props.divisions };
+    return { cells: cellStructure, divisions: this.props.divisions, color: color };
   },
 
   render: function render() {
@@ -18994,16 +18997,38 @@ var Divisible = React.createClass({ displayName: "Divisible",
     var children = [];
     var current = this.state.cells.node;
     var space = this.determineSpace(current);
+    var color = this.determineColor();
     for (var i = 0; i < this.state.divisions; i++) {
       children.push({
         dimensions: space[i].dimensions,
         level: current.level + 1,
         n: this.state.cells.firstChildNode + i,
         coords: space[i].coords,
+        color: color[i],
         shouldRender: true
       });
     }
     return children;
+  },
+  determineColor: function determineColor() {
+    var returned = [];
+    var seed = Math.random(),
+        probSeed = Math.random(),
+        prob = 0;
+    if (seed > 0.5) {
+      for (var i = 0; i < this.state.divisions; i++) {
+        prob = 1.0 / this.state.divisions;
+        returned[i] = this.state.color.rgba();
+        if (Math.abs(seed - prob * i) + Math.abs(i + 1 * prob - seed) == Math.abs(prob * i + 1 - prob * i)) {
+          returned[i] = this.state.color.rybRandom();
+        }
+      }
+    } else {
+      for (var i = 0; i < this.state.divisions; i++) {
+        returned[i] = this.state.color.rgba();
+      }
+    }
+    return returned;
   },
   determineSpace: function determineSpace(cell) {
     var startingX = cell.coords.x,
@@ -19019,8 +19044,6 @@ var Divisible = React.createClass({ displayName: "Divisible",
         modY = startingHeight * (mod * modifications[1]),
         modWidth = startingWidth * (1.0 - mod * modifications[0]),
         modHeight = startingHeight * (1.0 - mod * modifications[1]);
-    console.log(modWidth);
-    console.log(modHeight);
     for (var i = 0; i < this.state.divisions; i++) {
       returned.push({
         coords: {
@@ -19047,13 +19070,85 @@ var Divisible = React.createClass({ displayName: "Divisible",
     this.setState({ cells: this.createChildren(cell) });
   },
   renderCell: function renderCell(cell) {
-    return React.createElement("rect", { onClick: this.handleClick.bind(this, cell), x: cell.coords.x, y: cell.coords.y, width: cell.dimensions.width, height: cell.dimensions.height, fill: "white", stroke: "blue", strokeWidth: "1", key: cell.level + '' + cell.n });
+    return React.createElement("rect", { onClick: this.handleClick.bind(this, cell), x: cell.coords.x, y: cell.coords.y, width: cell.dimensions.width, height: cell.dimensions.height, fill: cell.color, stroke: "black", strokeWidth: "1", key: cell.level + '' + cell.n });
   }
 });
 ReactDOM.render(React.createElement(Divisible, { size: 100, divisions: 2 }), document.getElementById("game"));
 module.exports = 'test';
 
-},{"../structures/tree":159,"react":157,"react-dom":2}],159:[function(require,module,exports){
+},{"../structures/color":159,"../structures/tree":160,"react":157,"react-dom":2}],159:[function(require,module,exports){
+"use strict";
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Color = (function () {
+	function Color(r, g, b, a) {
+		_classCallCheck(this, Color);
+
+		this.r = r || this.generateRandomValue();
+		this.g = g || this.generateRandomValue();
+		this.b = b || this.generateRandomValue();
+		this.a = a || 1;
+	}
+
+	_createClass(Color, [{
+		key: "generateRandomValue",
+		value: function generateRandomValue() {
+			return (255 * Math.random()).toFixed(0);
+		}
+	}, {
+		key: "rgba",
+		value: function rgba() {
+			var arg = arguments.length <= 0 || arguments[0] === undefined ? this : arguments[0];
+
+			return "rgba(" + arg.r + ", " + arg.g + ", " + arg.b + ", " + arg.a + ")";
+		}
+	}, {
+		key: "rybRprob",
+		value: function rybRprob(seed) {
+			return 1.0 - Math.ceil(Math.abs(seed - 0.25) + Math.abs(0.75 - seed) - Math.abs(0.75 - 0.25));
+		}
+	}, {
+		key: "rybGprob",
+		value: function rybGprob(seed) {
+			return 1.0 - Math.ceil(Math.abs(seed - 0.5) + Math.abs(0.75 - seed) - Math.abs(0.75 - 0.5));
+		}
+	}, {
+		key: "rybBprob",
+		value: function rybBprob(seed) {
+			return 1.0 - Math.min(Math.ceil(Math.abs(seed - 0.75) + Math.abs(1.0 - seed) - Math.abs(1.0 - 0.75)), 1.0);
+		}
+	}, {
+		key: "rybRandom",
+		value: function rybRandom() {
+			var seed = Math.random();
+			var returned = {};
+			returned.r = 255 * this.rybRprob(seed);
+			returned.g = 255 * this.rybGprob(seed);
+			returned.b = 255 * this.rybBprob(seed);
+			returned.a = 1;
+			return this.rgba(returned);
+		}
+	}, {
+		key: "cmyRandom",
+		value: function cmyRandom() {
+			// results are 255 in 2, 0 in one
+		}
+	}, {
+		key: "rgbRandom",
+		value: function rgbRandom() {
+			// results are 255 in r, g, or b
+		}
+	}]);
+
+	return Color;
+})();
+
+module.exports = Color;
+
+},{}],160:[function(require,module,exports){
 'use strict';
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();

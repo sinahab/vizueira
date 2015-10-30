@@ -10,14 +10,14 @@ module.exports = {
       extensions: ['.js', '.jsx']
     },
     {
-      src: ['src/structures/*.js' ],
+      src: ['src/structures/manifest.js' ],
       dest: 'dist/modules',
       name: 'structures.js',
       watch: 'process-structures',
       module: 'structures',
       transform: ['babelify'],
       extensions: ['.js'],
-      standalone: 'structures.tree'
+      standalone: 'structures'
     }
   ],
   karma: {

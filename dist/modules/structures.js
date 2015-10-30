@@ -1,4 +1,84 @@
-!function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),(f.structures||(f.structures={})).tree=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+!function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.structures=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+"use strict";
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Color = (function () {
+	function Color(r, g, b, a) {
+		_classCallCheck(this, Color);
+
+		this.r = r || this.generateRandomValue();
+		this.g = g || this.generateRandomValue();
+		this.b = b || this.generateRandomValue();
+		this.a = a || 1;
+	}
+
+	_createClass(Color, [{
+		key: "generateRandomValue",
+		value: function generateRandomValue() {
+			return (255 * Math.random()).toFixed(0);
+		}
+	}, {
+		key: "rgba",
+		value: function rgba() {
+			var arg = arguments.length <= 0 || arguments[0] === undefined ? this : arguments[0];
+
+			return "rgba(" + arg.r + ", " + arg.g + ", " + arg.b + ", " + arg.a + ")";
+		}
+	}, {
+		key: "rybRprob",
+		value: function rybRprob(seed) {
+			return 1.0 - Math.ceil(Math.abs(seed - 0.25) + Math.abs(0.75 - seed) - Math.abs(0.75 - 0.25));
+		}
+	}, {
+		key: "rybGprob",
+		value: function rybGprob(seed) {
+			return 1.0 - Math.ceil(Math.abs(seed - 0.5) + Math.abs(0.75 - seed) - Math.abs(0.75 - 0.5));
+		}
+	}, {
+		key: "rybBprob",
+		value: function rybBprob(seed) {
+			return 1.0 - Math.min(Math.ceil(Math.abs(seed - 0.75) + Math.abs(1.0 - seed) - Math.abs(1.0 - 0.75)), 1.0);
+		}
+	}, {
+		key: "rybRandom",
+		value: function rybRandom() {
+			var seed = Math.random();
+			var returned = {};
+			returned.r = 255 * this.rybRprob(seed);
+			returned.g = 255 * this.rybGprob(seed);
+			returned.b = 255 * this.rybBprob(seed);
+			returned.a = 1;
+			return this.rgba(returned);
+		}
+	}, {
+		key: "cmyRandom",
+		value: function cmyRandom() {
+			// results are 255 in 2, 0 in one
+		}
+	}, {
+		key: "rgbRandom",
+		value: function rgbRandom() {
+			// results are 255 in r, g, or b
+		}
+	}]);
+
+	return Color;
+})();
+
+module.exports = Color;
+
+},{}],2:[function(_dereq_,module,exports){
+'use strict';
+
+module.exports = {
+	color: _dereq_('./color'),
+	tree: _dereq_('./tree')
+};
+
+},{"./color":1,"./tree":3}],3:[function(_dereq_,module,exports){
 'use strict';
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
@@ -208,6 +288,6 @@ var Tree = (function (_Array) {
 
 module.exports = Tree;
 
-},{}]},{},[1])
-(1)
+},{}]},{},[2])
+(2)
 });

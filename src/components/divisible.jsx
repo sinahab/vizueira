@@ -1,10 +1,12 @@
 var React = require('react');
 var ReactDOM = require('react-dom');
 var Tree = require('../structures/tree')
+var Color = require('../structures/color')
 
 var Divisible = React.createClass({
   getInitialState: function(){
     var cellStructure = new Tree( this.props.divisions, 1 );
+    var color = new Color(255,255,255,1);
     cellStructure.root = { 
       coords: {
         x: 0,
@@ -16,8 +18,9 @@ var Divisible = React.createClass({
       },
       level: 0, 
       n: 0, 
+      color: color.rgba(),
       shouldRender: true }
-    return { cells: cellStructure, divisions: this.props.divisions }
+    return { cells: cellStructure, divisions: this.props.divisions, color: color }
   },
 
   render: function(){
@@ -40,17 +43,40 @@ var Divisible = React.createClass({
     let children = [];    
     let current = this.state.cells.node;
     let space = this.determineSpace( current ); 
+    let color = this.determineColor();
     for( var i = 0; i< this.state.divisions; i++ ){
       children.push({ 
         dimensions: space[i].dimensions,
         level: current.level + 1, 
         n: this.state.cells.firstChildNode + i,
         coords: space[ i ].coords,
+        color: color[i],
         shouldRender: true
       })
     }  
     return children  
 
+  },
+  determineColor: function(){
+    let returned = []
+    let seed = Math.random(),
+        probSeed = Math.random(),
+        prob = 0;
+    if( seed > 0.5 ){
+      for( var i = 0; i< this.state.divisions; i++ ){
+          prob = 1.0 / this.state.divisions;
+          returned[i] = this.state.color.rgba()
+          if ( Math.abs( seed - prob * i ) + Math.abs( i+1 * prob - seed ) == Math.abs( prob * i+1  - prob * i ) ){
+            returned[i] = this.state.color.rybRandom()
+          }
+
+      }  
+    } else {
+      for( var i = 0; i< this.state.divisions; i++ ){
+        returned[i] = this.state.color.rgba()
+      }
+    }
+    return returned
   },
   determineSpace: function( cell ) {
     let startingX = cell.coords.x,
@@ -66,8 +92,6 @@ var Divisible = React.createClass({
         modY = startingHeight * (mod * modifications[1]),
         modWidth = startingWidth * (1.0 - (mod * modifications[0]) ),
         modHeight = startingHeight * (1.0 - (mod * modifications[1]) );
-        console.log(modWidth)
-        console.log(modHeight)
     for( var i = 0; i< this.state.divisions; i++ ){
       returned.push({
         coords: {
@@ -95,7 +119,7 @@ var Divisible = React.createClass({
     this.setState({ cells: this.createChildren( cell ) })
   },
   renderCell: function( cell ){
-    return <rect onClick={this.handleClick.bind(this, cell )} x={cell.coords.x} y={cell.coords.y} width={cell.dimensions.width} height={cell.dimensions.height} fill="white" stroke="blue" strokeWidth="1" key={ cell.level + '' + cell.n } />
+    return <rect onClick={this.handleClick.bind(this, cell )} x={cell.coords.x} y={cell.coords.y} width={cell.dimensions.width} height={cell.dimensions.height} fill={cell.color} stroke="black" strokeWidth="1" key={ cell.level + '' + cell.n } />
   }
 });
 ReactDOM.render( <Divisible size={100} divisions={2}></Divisible>,
