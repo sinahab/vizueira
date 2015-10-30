@@ -6,8 +6,11 @@ class Tree extends Array {
 		this._level = 0;
 		this._node = 0;
 	}
+	set width( arg ){
+		this._branchCount = arg;
+	}
 	get maxNodes(){
-		return this.nodesAtFloored( this._depth + 1 ) / this.adjCount;
+		return this.nodesAtIndexed( this._depth + 1 ) / this.adjCount;
 	}
 	get adjCount(){
 		return this._branchCount - 1
@@ -32,7 +35,6 @@ class Tree extends Array {
 		this[this.locate( level, node ) ] = value
 	}	
 	get node(){
-
 		let level=this._level, 
 				node=this._node,
 				index = this.locate( level, node );
@@ -59,7 +61,6 @@ class Tree extends Array {
 		this.node = arg;
 	}
 	get children(){
-		// this.deepen( this.lastChildIndex + 1 )
 		let children = this.slice( this.firstChildIndex, this.lastChildIndex + 1 );
 				return children
 	}
@@ -79,14 +80,14 @@ class Tree extends Array {
 	nodesAt( level= this._level ){
 		return Math.pow( this._branchCount, level )
 	}
-	nodesAtFloored( level= this._level ){
+	nodesAtIndexed( level= this._level ){
 		return this.nodesAt( level ) - 1 
 	}	
 	rootNodeAt( level=this._level ){
-		return this.nodesAtFoored( level ) / this.adjCount
+		return this.nodesAtIndexed( level ) / this.adjCount
 	}
 	locate( level, node ){
-		return node + this.nodesAtFloored( level ) / this.adjCount 
+		return node + this.nodesAtIndexed( level ) / this.adjCount 
 	}
 	toFirst(){
 		this._level ++;
@@ -99,6 +100,7 @@ class Tree extends Array {
 	toNth( index ){
 		this._level ++
 		this._node = this.firstChildNode + index;
+		return this.node
 	}
 	toParent(){
 		this._level --;
@@ -131,6 +133,34 @@ class Tree extends Array {
 				this.depthTraversal(value)
 			}
 			this.parent
+		}
+	}
+	breadthTraversalCall( callback, level= this._level ){
+		for( let i = 0, j = this.nodesAt(); i< j; i++ ){
+			this.toNode( i )
+			callback( this.node );
+		}
+		if( this.length > this.lastChildIndex + 1 ){
+			this._level ++;
+			this.breadthTraversal();
+		}
+	}
+	breadthTraversalSet( value, level ){
+		this._level = level || this._level
+		for( let i = 0, j = this.nodesAt(); i< j; i++ ){
+			this.goTo( i, this._level )
+				if( typeof value == 'function'){
+					this.node = value()
+				} else {
+					this.node = value
+				}
+		}
+	}	
+	breadthTraversalInitialize( func, val, level ){
+		this._level = level || this._level
+		for( let i = 0, j = this.nodesAt(); i< j; i++ ){
+			this.goTo( i, this._level )
+				this.node = new func( val )
 		}
 	}	
 

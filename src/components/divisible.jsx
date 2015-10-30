@@ -107,6 +107,15 @@ var Divisible = React.createClass({
     return returned
 
   },
+  determineOffsets: function(){
+    let seed = Math.random();
+        returned = [];
+    for( var i = 0; i< this.state.divisions; i++){
+      //each iteration takes part of the the change, which is 10 - 30%
+      // some take negative, others take positive to even out
+      returned.push( (i % 2))
+    }
+  },
   determineMods: function(){
     let seed = Math.random(),
         returned = [];
