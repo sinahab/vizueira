@@ -1,6 +1,7 @@
 var React = require('react');
 var ReactDOM = require('react-dom');
-var Tree = require('../structures/tree')
+var Tree = require('basic-tree')
+var Random = require('random-set')
 var Color = require('../structures/color')
 
 var Divisible = React.createClass({

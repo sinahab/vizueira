@@ -1,5 +1,5 @@
 module.exports = {
 	color: require('./color'),
-	tree: require('./tree'),
-	probability: require('./randomSet')
+	tree: require('basic-tree'),
+	probability: require('random-set')
 }
