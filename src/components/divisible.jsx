@@ -60,22 +60,8 @@ var Divisible = React.createClass({
   },
   determineColor: function(){
     let returned = []
-    let seed = Math.random(),
-        probSeed = Math.random(),
-        prob = 0;
-    if( seed > 0.5 ){
-      for( var i = 0; i< this.state.divisions; i++ ){
-          prob = 1.0 / this.state.divisions;
-          returned[i] = this.state.color.rgba()
-          if ( Math.abs( seed - prob * i ) + Math.abs( i+1 * prob - seed ) == Math.abs( prob * i+1  - prob * i ) ){
-            returned[i] = this.state.color.rybRandom()
-          }
-
-      }  
-    } else {
-      for( var i = 0; i< this.state.divisions; i++ ){
-        returned[i] = this.state.color.rgba()
-      }
+    for( var i = 0; i< this.state.divisions; i++ ){
+      returned[i] = this.state.color.rgba()
     }
     return returned
   },
@@ -107,15 +93,6 @@ var Divisible = React.createClass({
     }
     return returned
 
-  },
-  determineOffsets: function(){
-    let seed = Math.random();
-        returned = [];
-    for( var i = 0; i< this.state.divisions; i++){
-      //each iteration takes part of the the change, which is 10 - 30%
-      // some take negative, others take positive to even out
-      returned.push( (i % 2))
-    }
   },
   determineMods: function(){
     let seed = Math.random(),
