@@ -1,6 +1,5 @@
 'use strict';
 var gulp        = require( 'gulp' ),
-    concat      = require( 'gulp-concat' ),
     karma       = require( './karma'),
     sysNotifier = require( '../util/sysNotifier' ),
     browserify = require( 'gulp-browserify' ),
@@ -18,7 +17,6 @@ gulp.task('groups', function(){
               extensions: config[taskNumber].extensions,
               standalone: config[taskNumber].standalone || false
             }))
-            .pipe( concat( config[taskNumber].name ) )
             .pipe( gulp.dest( config[taskNumber].dest ) )
             .on('end', function(){console.log('ended')})
         });        

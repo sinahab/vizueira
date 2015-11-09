@@ -19319,47 +19319,110 @@ var Tree = require('basic-tree');
 var Random = require('random-set');
 var Color = require('../structures/color');
 
-var Linkable = React.createClass({ displayName: "Linkable",
+var Divisible = React.createClass({ displayName: "Divisible",
   getInitialState: function getInitialState() {
-    var circles = new Array();
-
-    circles.push({
-      coordinates: {
-        x: "50",
-        y: "50",
-        r: "50"
+    var cellStructure = new Tree(this.props.divisions, 1);
+    var color = new Color(255, 255, 255, 1);
+    cellStructure.root = {
+      coords: {
+        x: 0,
+        y: 0
       },
-
-      color: "red"
-    });
-
-    circles.push({
-      coordinates: {
-        x: "100",
-        y: "100",
-        r: "20"
+      dimensions: {
+        width: this.props.width,
+        height: this.props.height
       },
-
-      color: "blue"
-    });
-
-    return { circles: circles };
+      level: 0,
+      n: 0,
+      color: color.rgba(),
+      shouldRender: true };
+    return { cells: cellStructure, divisions: this.props.divisions, color: color };
   },
 
   render: function render() {
-    return React.createElement("g", null, " ", this.state.circles.map(function (circle) {
-      return React.createElement("circle", { cx: circle.coordinates.x, cy: circle.coordinates.y, r: circle.coordinates.r, stroke: "black", strokeWidth: "1", fill: circle.color });
-    }), " ");
+    return React.createElement("g", null, this.state.cells.map(function (cell, index) {
+      if (cell !== undefined && cell.shouldRender) {
+        return this.renderCell(cell, index);
+      }
+    }, this));
   },
+  createChildren: function createChildren(cell) {
+    this.state.cells.goTo(cell.n, cell.level);
+    this.state.cells.children = this.divide.call(this.state.cells.node);
+    this.state.cells.node.shouldRender = false;
+    this.state.cells.root;
+    return this.state.cells;
+  },
+  divide: function divide() {
+    var children = [];
+    var current = this.state.cells.node;
+    var space = this.determineSpace(current);
+    var color = this.determineColor();
+    for (var i = 0; i < this.state.divisions; i++) {
+      children.push({
+        dimensions: space[i].dimensions,
+        level: current.level + 1,
+        n: this.state.cells.firstChildNode + i,
+        coords: space[i].coords,
+        color: color[i],
+        shouldRender: true
+      });
+    }
+    return children;
+  },
+  determineColor: function determineColor() {
+    var returned = [];
+    for (var i = 0; i < this.state.divisions; i++) {
+      returned[i] = this.state.color.rgba();
+    }
+    return returned;
+  },
+  determineSpace: function determineSpace(cell) {
+    var startingX = cell.coords.x,
+        startingY = cell.coords.y,
+        startingWidth = cell.dimensions.width,
+        startingHeight = cell.dimensions.height,
+        mod = 1.0 / this.state.divisions;
 
-  handleClick: function handleClick() {
-    createFirework(64, 59, 4, 2, null, null, null, null, false, true);
+    var modifications = this.determineMods(),
+        returned = [];
+
+    var modX = startingWidth * (mod * modifications[0]),
+        modY = startingHeight * (mod * modifications[1]),
+        modWidth = startingWidth * (1.0 - mod * modifications[0]),
+        modHeight = startingHeight * (1.0 - mod * modifications[1]);
+    for (var i = 0; i < this.state.divisions; i++) {
+      returned.push({
+        coords: {
+          x: startingX + i * modX,
+          y: startingY + i * modY
+        },
+        dimensions: {
+          width: modWidth,
+          height: modHeight
+        }
+      });
+    }
+    return returned;
+  },
+  determineMods: function determineMods() {
+    var seed = Math.random(),
+        returned = [];
+    returned[0] = seed > 0.5 ? 1 : 0;
+    returned[1] = 1 - returned[0];
+    return returned;
+  },
+  handleClick: function handleClick(cell) {
+    this.setState({ cells: this.createChildren(cell) });
+  },
+  renderCell: function renderCell(cell) {
+    return React.createElement("rect", { onClick: this.handleClick.bind(this, cell), x: cell.coords.x, y: cell.coords.y, width: cell.dimensions.width, height: cell.dimensions.height, fill: cell.color, stroke: "black", strokeWidth: "4", key: cell.level + '' + cell.n });
   }
-
 });
 
-ReactDOM.render(React.createElement(Linkable, null), document.getElementById("game"));
-module.exports = 'test';
+// ReactDOM.render( <Divisible width={300} height={600} divisions={2}></Divisible>,
+//   document.getElementById( "game" ));
+module.exports = Divisible;
 
 },{"../structures/color":162,"basic-tree":1,"random-set":3,"react":160,"react-dom":5}],162:[function(require,module,exports){
 "use strict";

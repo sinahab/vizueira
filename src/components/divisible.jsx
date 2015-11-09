@@ -108,6 +108,10 @@ var Divisible = React.createClass({
     return <rect onClick={this.handleClick.bind(this, cell )} x={cell.coords.x} y={cell.coords.y} width={cell.dimensions.width} height={cell.dimensions.height} fill={cell.color} stroke="black" strokeWidth="4" key={ cell.level + '' + cell.n } />
   }
 });
-ReactDOM.render( <Divisible width={300} height={600} divisions={2}></Divisible>,
-  document.getElementById( "game" ));
-module.exports = 'test'
+
+// ReactDOM.render( <Divisible width={300} height={600} divisions={2}></Divisible>,
+//   document.getElementById( "game" ));
+module.exports = Divisible;
+
+
+
