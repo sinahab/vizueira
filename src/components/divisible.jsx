@@ -1,13 +1,11 @@
-var React = require('react');
-var ReactDOM = require('react-dom');
-var Tree = require('basic-tree')
-var Random = require('random-set')
-var Color = require('../structures/color')
+var Deps = require('../structures/manifest'),
+    React = require('react'),
+    ReactDOM = require('react-dom');
 
 var Divisible = React.createClass({
   getInitialState: function(){
-    var cellStructure = new Tree( this.props.divisions, 1 );
-    var color = new Color(255,255,255,1);
+    var cellStructure = new Deps.Tree( this.props.divisions, 1 );
+    var color = new Deps.Color(255,255,255,1);
     cellStructure.root = { 
       coords: {
         x: 0,
@@ -109,7 +107,7 @@ var Divisible = React.createClass({
   }
 });
 
-// ReactDOM.render( <Divisible width={300} height={600} divisions={2}></Divisible>,
+// Deps.ReactDOM.render( <Divisible width={300} height={600} divisions={2}></Divisible>,
 //   document.getElementById( "game" ));
 module.exports = Divisible;
 

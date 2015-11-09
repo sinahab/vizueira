@@ -425,9 +425,5794 @@ module.exports=require(1)
 },{}],5:[function(require,module,exports){
 'use strict';
 
+exports.__esModule = true;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _lodashFunctionMemoize = require('lodash/function/memoize');
+
+var _lodashFunctionMemoize2 = _interopRequireDefault(_lodashFunctionMemoize);
+
+var isFirefox = _lodashFunctionMemoize2['default'](function () {
+  return (/firefox/i.test(navigator.userAgent)
+  );
+});
+
+exports.isFirefox = isFirefox;
+var isSafari = _lodashFunctionMemoize2['default'](function () {
+  return Boolean(window.safari);
+});
+exports.isSafari = isSafari;
+},{"lodash/function/memoize":17}],6:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+var _lodashArrayUnion = require('lodash/array/union');
+
+var _lodashArrayUnion2 = _interopRequireDefault(_lodashArrayUnion);
+
+var _lodashArrayWithout = require('lodash/array/without');
+
+var _lodashArrayWithout2 = _interopRequireDefault(_lodashArrayWithout);
+
+var EnterLeaveCounter = (function () {
+  function EnterLeaveCounter() {
+    _classCallCheck(this, EnterLeaveCounter);
+
+    this.entered = [];
+  }
+
+  EnterLeaveCounter.prototype.enter = function enter(enteringNode) {
+    var previousLength = this.entered.length;
+
+    this.entered = _lodashArrayUnion2['default'](this.entered.filter(function (node) {
+      return document.documentElement.contains(node) && (!node.contains || node.contains(enteringNode));
+    }), [enteringNode]);
+
+    return previousLength === 0 && this.entered.length > 0;
+  };
+
+  EnterLeaveCounter.prototype.leave = function leave(leavingNode) {
+    var previousLength = this.entered.length;
+
+    this.entered = _lodashArrayWithout2['default'](this.entered.filter(function (node) {
+      return document.documentElement.contains(node);
+    }), leavingNode);
+
+    return previousLength > 0 && this.entered.length === 0;
+  };
+
+  EnterLeaveCounter.prototype.reset = function reset() {
+    this.entered = [];
+  };
+
+  return EnterLeaveCounter;
+})();
+
+exports['default'] = EnterLeaveCounter;
+module.exports = exports['default'];
+},{"lodash/array/union":15,"lodash/array/without":16}],7:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj['default'] = obj; return newObj; } }
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+var _lodashObjectDefaults = require('lodash/object/defaults');
+
+var _lodashObjectDefaults2 = _interopRequireDefault(_lodashObjectDefaults);
+
+var _shallowEqual = require('./shallowEqual');
+
+var _shallowEqual2 = _interopRequireDefault(_shallowEqual);
+
+var _EnterLeaveCounter = require('./EnterLeaveCounter');
+
+var _EnterLeaveCounter2 = _interopRequireDefault(_EnterLeaveCounter);
+
+var _BrowserDetector = require('./BrowserDetector');
+
+var _OffsetUtils = require('./OffsetUtils');
+
+var _NativeDragSources = require('./NativeDragSources');
+
+var _NativeTypes = require('./NativeTypes');
+
+var NativeTypes = _interopRequireWildcard(_NativeTypes);
+
+var HTML5Backend = (function () {
+  function HTML5Backend(manager) {
+    _classCallCheck(this, HTML5Backend);
+
+    this.actions = manager.getActions();
+    this.monitor = manager.getMonitor();
+    this.registry = manager.getRegistry();
+
+    this.sourcePreviewNodes = {};
+    this.sourcePreviewNodeOptions = {};
+    this.sourceNodes = {};
+    this.sourceNodeOptions = {};
+    this.enterLeaveCounter = new _EnterLeaveCounter2['default']();
+
+    this.getSourceClientOffset = this.getSourceClientOffset.bind(this);
+    this.handleTopDragStart = this.handleTopDragStart.bind(this);
+    this.handleTopDragStartCapture = this.handleTopDragStartCapture.bind(this);
+    this.handleTopDragEndCapture = this.handleTopDragEndCapture.bind(this);
+    this.handleTopDragEnter = this.handleTopDragEnter.bind(this);
+    this.handleTopDragEnterCapture = this.handleTopDragEnterCapture.bind(this);
+    this.handleTopDragLeaveCapture = this.handleTopDragLeaveCapture.bind(this);
+    this.handleTopDragOver = this.handleTopDragOver.bind(this);
+    this.handleTopDragOverCapture = this.handleTopDragOverCapture.bind(this);
+    this.handleTopDrop = this.handleTopDrop.bind(this);
+    this.handleTopDropCapture = this.handleTopDropCapture.bind(this);
+    this.handleSelectStart = this.handleSelectStart.bind(this);
+    this.endDragIfSourceWasRemovedFromDOM = this.endDragIfSourceWasRemovedFromDOM.bind(this);
+  }
+
+  HTML5Backend.prototype.setup = function setup() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (this.constructor.isSetUp) {
+      throw new Error('Cannot have two HTML5 backends at the same time.');
+    }
+    this.constructor.isSetUp = true;
+
+    window.addEventListener('dragstart', this.handleTopDragStart);
+    window.addEventListener('dragstart', this.handleTopDragStartCapture, true);
+    window.addEventListener('dragend', this.handleTopDragEndCapture, true);
+    window.addEventListener('dragenter', this.handleTopDragEnter);
+    window.addEventListener('dragenter', this.handleTopDragEnterCapture, true);
+    window.addEventListener('dragleave', this.handleTopDragLeaveCapture, true);
+    window.addEventListener('dragover', this.handleTopDragOver);
+    window.addEventListener('dragover', this.handleTopDragOverCapture, true);
+    window.addEventListener('drop', this.handleTopDrop);
+    window.addEventListener('drop', this.handleTopDropCapture, true);
+  };
+
+  HTML5Backend.prototype.teardown = function teardown() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    this.constructor.isSetUp = false;
+
+    window.removeEventListener('dragstart', this.handleTopDragStart);
+    window.removeEventListener('dragstart', this.handleTopDragStartCapture, true);
+    window.removeEventListener('dragend', this.handleTopDragEndCapture, true);
+    window.removeEventListener('dragenter', this.handleTopDragEnter);
+    window.removeEventListener('dragenter', this.handleTopDragEnterCapture, true);
+    window.removeEventListener('dragleave', this.handleTopDragLeaveCapture, true);
+    window.removeEventListener('dragover', this.handleTopDragOver);
+    window.removeEventListener('dragover', this.handleTopDragOverCapture, true);
+    window.removeEventListener('drop', this.handleTopDrop);
+    window.removeEventListener('drop', this.handleTopDropCapture, true);
+
+    this.clearCurrentDragSourceNode();
+  };
+
+  HTML5Backend.prototype.connectDragPreview = function connectDragPreview(sourceId, node, options) {
+    var _this = this;
+
+    this.sourcePreviewNodeOptions[sourceId] = options;
+    this.sourcePreviewNodes[sourceId] = node;
+
+    return function () {
+      delete _this.sourcePreviewNodes[sourceId];
+      delete _this.sourcePreviewNodeOptions[sourceId];
+    };
+  };
+
+  HTML5Backend.prototype.connectDragSource = function connectDragSource(sourceId, node, options) {
+    var _this2 = this;
+
+    this.sourceNodes[sourceId] = node;
+    this.sourceNodeOptions[sourceId] = options;
+
+    var handleDragStart = function handleDragStart(e) {
+      return _this2.handleDragStart(e, sourceId);
+    };
+    var handleSelectStart = function handleSelectStart(e) {
+      return _this2.handleSelectStart(e, sourceId);
+    };
+
+    node.setAttribute('draggable', true);
+    node.addEventListener('dragstart', handleDragStart);
+    node.addEventListener('selectstart', handleSelectStart);
+
+    return function () {
+      delete _this2.sourceNodes[sourceId];
+      delete _this2.sourceNodeOptions[sourceId];
+
+      node.removeEventListener('dragstart', handleDragStart);
+      node.removeEventListener('selectstart', handleSelectStart);
+      node.setAttribute('draggable', false);
+    };
+  };
+
+  HTML5Backend.prototype.connectDropTarget = function connectDropTarget(targetId, node) {
+    var _this3 = this;
+
+    var handleDragEnter = function handleDragEnter(e) {
+      return _this3.handleDragEnter(e, targetId);
+    };
+    var handleDragOver = function handleDragOver(e) {
+      return _this3.handleDragOver(e, targetId);
+    };
+    var handleDrop = function handleDrop(e) {
+      return _this3.handleDrop(e, targetId);
+    };
+
+    node.addEventListener('dragenter', handleDragEnter);
+    node.addEventListener('dragover', handleDragOver);
+    node.addEventListener('drop', handleDrop);
+
+    return function () {
+      node.removeEventListener('dragenter', handleDragEnter);
+      node.removeEventListener('dragover', handleDragOver);
+      node.removeEventListener('drop', handleDrop);
+    };
+  };
+
+  HTML5Backend.prototype.getCurrentSourceNodeOptions = function getCurrentSourceNodeOptions() {
+    var sourceId = this.monitor.getSourceId();
+    var sourceNodeOptions = this.sourceNodeOptions[sourceId];
+
+    return _lodashObjectDefaults2['default'](sourceNodeOptions || {}, {
+      dropEffect: 'move'
+    });
+  };
+
+  HTML5Backend.prototype.getCurrentDropEffect = function getCurrentDropEffect() {
+    if (this.isDraggingNativeItem()) {
+      // It makes more sense to default to 'copy' for native resources
+      return 'copy';
+    }
+
+    return this.getCurrentSourceNodeOptions().dropEffect;
+  };
+
+  HTML5Backend.prototype.getCurrentSourcePreviewNodeOptions = function getCurrentSourcePreviewNodeOptions() {
+    var sourceId = this.monitor.getSourceId();
+    var sourcePreviewNodeOptions = this.sourcePreviewNodeOptions[sourceId];
+
+    return _lodashObjectDefaults2['default'](sourcePreviewNodeOptions || {}, {
+      anchorX: 0.5,
+      anchorY: 0.5,
+      captureDraggingState: false
+    });
+  };
+
+  HTML5Backend.prototype.getSourceClientOffset = function getSourceClientOffset(sourceId) {
+    return _OffsetUtils.getNodeClientOffset(this.sourceNodes[sourceId]);
+  };
+
+  HTML5Backend.prototype.isDraggingNativeItem = function isDraggingNativeItem() {
+    var itemType = this.monitor.getItemType();
+    return Object.keys(NativeTypes).some(function (key) {
+      return NativeTypes[key] === itemType;
+    });
+  };
+
+  HTML5Backend.prototype.beginDragNativeItem = function beginDragNativeItem(type) {
+    this.clearCurrentDragSourceNode();
+
+    var SourceType = _NativeDragSources.createNativeDragSource(type);
+    this.currentNativeSource = new SourceType();
+    this.currentNativeHandle = this.registry.addSource(type, this.currentNativeSource);
+    this.actions.beginDrag([this.currentNativeHandle]);
+  };
+
+  HTML5Backend.prototype.endDragNativeItem = function endDragNativeItem() {
+    this.actions.endDrag();
+    this.registry.removeSource(this.currentNativeHandle);
+    this.currentNativeHandle = null;
+    this.currentNativeSource = null;
+  };
+
+  HTML5Backend.prototype.endDragIfSourceWasRemovedFromDOM = function endDragIfSourceWasRemovedFromDOM() {
+    var node = this.currentDragSourceNode;
+    if (document.body.contains(node)) {
+      return;
+    }
+
+    this.actions.endDrag();
+    this.clearCurrentDragSourceNode();
+  };
+
+  HTML5Backend.prototype.setCurrentDragSourceNode = function setCurrentDragSourceNode(node) {
+    this.clearCurrentDragSourceNode();
+    this.currentDragSourceNode = node;
+    this.currentDragSourceNodeOffset = _OffsetUtils.getNodeClientOffset(node);
+    this.currentDragSourceNodeOffsetChanged = false;
+
+    // Receiving a mouse event in the middle of a dragging operation
+    // means it has ended and the drag source node disappeared from DOM,
+    // so the browser didn't dispatch the dragend event.
+    window.addEventListener('mousemove', this.endDragIfSourceWasRemovedFromDOM, true);
+  };
+
+  HTML5Backend.prototype.clearCurrentDragSourceNode = function clearCurrentDragSourceNode() {
+    if (this.currentDragSourceNode) {
+      this.currentDragSourceNode = null;
+      this.currentDragSourceNodeOffset = null;
+      this.currentDragSourceNodeOffsetChanged = false;
+      window.removeEventListener('mousemove', this.endDragIfSourceWasRemovedFromDOM, true);
+      return true;
+    }
+
+    return false;
+  };
+
+  HTML5Backend.prototype.checkIfCurrentDragSourceRectChanged = function checkIfCurrentDragSourceRectChanged() {
+    var node = this.currentDragSourceNode;
+    if (!node) {
+      return false;
+    }
+
+    if (this.currentDragSourceNodeOffsetChanged) {
+      return true;
+    }
+
+    this.currentDragSourceNodeOffsetChanged = !_shallowEqual2['default'](_OffsetUtils.getNodeClientOffset(node), this.currentDragSourceNodeOffset);
+
+    return this.currentDragSourceNodeOffsetChanged;
+  };
+
+  HTML5Backend.prototype.handleTopDragStartCapture = function handleTopDragStartCapture() {
+    this.clearCurrentDragSourceNode();
+    this.dragStartSourceIds = [];
+  };
+
+  HTML5Backend.prototype.handleDragStart = function handleDragStart(e, sourceId) {
+    this.dragStartSourceIds.unshift(sourceId);
+  };
+
+  HTML5Backend.prototype.handleTopDragStart = function handleTopDragStart(e) {
+    var _this4 = this;
+
+    var dragStartSourceIds = this.dragStartSourceIds;
+
+    this.dragStartSourceIds = null;
+
+    var clientOffset = _OffsetUtils.getEventClientOffset(e);
+
+    // Don't publish the source just yet (see why below)
+    this.actions.beginDrag(dragStartSourceIds, {
+      publishSource: false,
+      getSourceClientOffset: this.getSourceClientOffset,
+      clientOffset: clientOffset
+    });
+
+    var dataTransfer = e.dataTransfer;
+
+    var nativeType = _NativeDragSources.matchNativeItemType(dataTransfer);
+
+    if (this.monitor.isDragging()) {
+      if (typeof dataTransfer.setDragImage === 'function') {
+        // Use custom drag image if user specifies it.
+        // If child drag source refuses drag but parent agrees,
+        // use parent's node as drag image. Neither works in IE though.
+        var sourceId = this.monitor.getSourceId();
+        var sourceNode = this.sourceNodes[sourceId];
+        var dragPreview = this.sourcePreviewNodes[sourceId] || sourceNode;
+
+        var _getCurrentSourcePreviewNodeOptions = this.getCurrentSourcePreviewNodeOptions();
+
+        var anchorX = _getCurrentSourcePreviewNodeOptions.anchorX;
+        var anchorY = _getCurrentSourcePreviewNodeOptions.anchorY;
+
+        var anchorPoint = { anchorX: anchorX, anchorY: anchorY };
+        var dragPreviewOffset = _OffsetUtils.getDragPreviewOffset(sourceNode, dragPreview, clientOffset, anchorPoint);
+        dataTransfer.setDragImage(dragPreview, dragPreviewOffset.x, dragPreviewOffset.y);
+      }
+
+      try {
+        // Firefox won't drag without setting data
+        dataTransfer.setData('application/json', {});
+      } catch (err) {}
+      // IE doesn't support MIME types in setData
+
+      // Store drag source node so we can check whether
+      // it is removed from DOM and trigger endDrag manually.
+      this.setCurrentDragSourceNode(e.target);
+
+      // Now we are ready to publish the drag source.. or are we not?
+
+      var _getCurrentSourcePreviewNodeOptions2 = this.getCurrentSourcePreviewNodeOptions();
+
+      var captureDraggingState = _getCurrentSourcePreviewNodeOptions2.captureDraggingState;
+
+      if (!captureDraggingState) {
+        // Usually we want to publish it in the next tick so that browser
+        // is able to screenshot the current (not yet dragging) state.
+        //
+        // It also neatly avoids a situation where render() returns null
+        // in the same tick for the source element, and browser freaks out.
+        setTimeout(function () {
+          return _this4.actions.publishDragSource();
+        });
+      } else {
+        // In some cases the user may want to override this behavior, e.g.
+        // to work around IE not supporting custom drag previews.
+        //
+        // When using a custom drag layer, the only way to prevent
+        // the default drag preview from drawing in IE is to screenshot
+        // the dragging state in which the node itself has zero opacity
+        // and height. In this case, though, returning null from render()
+        // will abruptly end the dragging, which is not obvious.
+        //
+        // This is the reason such behavior is strictly opt-in.
+        this.actions.publishDragSource();
+      }
+    } else if (nativeType) {
+      // A native item (such as URL) dragged from inside the document
+      this.beginDragNativeItem(nativeType);
+    } else if (!dataTransfer.types && (!e.target.hasAttribute || !e.target.hasAttribute('draggable'))) {
+      // Looks like a Safari bug: dataTransfer.types is null, but there was no draggable.
+      // Just let it drag. It's a native type (URL or text) and will be picked up in dragenter handler.
+      return;
+    } else {
+      // If by this time no drag source reacted, tell browser not to drag.
+      e.preventDefault();
+    }
+  };
+
+  HTML5Backend.prototype.handleTopDragEndCapture = function handleTopDragEndCapture() {
+    if (this.clearCurrentDragSourceNode()) {
+      // Firefox can dispatch this event in an infinite loop
+      // if dragend handler does something like showing an alert.
+      // Only proceed if we have not handled it already.
+      this.actions.endDrag();
+    }
+  };
+
+  HTML5Backend.prototype.handleTopDragEnterCapture = function handleTopDragEnterCapture(e) {
+    this.dragEnterTargetIds = [];
+
+    var isFirstEnter = this.enterLeaveCounter.enter(e.target);
+    if (!isFirstEnter || this.monitor.isDragging()) {
+      return;
+    }
+
+    var dataTransfer = e.dataTransfer;
+
+    var nativeType = _NativeDragSources.matchNativeItemType(dataTransfer);
+
+    if (nativeType) {
+      // A native item (such as file or URL) dragged from outside the document
+      this.beginDragNativeItem(nativeType);
+    }
+  };
+
+  HTML5Backend.prototype.handleDragEnter = function handleDragEnter(e, targetId) {
+    this.dragEnterTargetIds.unshift(targetId);
+  };
+
+  HTML5Backend.prototype.handleTopDragEnter = function handleTopDragEnter(e) {
+    var _this5 = this;
+
+    var dragEnterTargetIds = this.dragEnterTargetIds;
+
+    this.dragEnterTargetIds = [];
+
+    if (!this.monitor.isDragging()) {
+      // This is probably a native item type we don't understand.
+      return;
+    }
+
+    if (!_BrowserDetector.isFirefox()) {
+      // Don't emit hover in `dragenter` on Firefox due to an edge case.
+      // If the target changes position as the result of `dragenter`, Firefox
+      // will still happily dispatch `dragover` despite target being no longer
+      // there. The easy solution is to only fire `hover` in `dragover` on FF.
+      this.actions.hover(dragEnterTargetIds, {
+        clientOffset: _OffsetUtils.getEventClientOffset(e)
+      });
+    }
+
+    var canDrop = dragEnterTargetIds.some(function (targetId) {
+      return _this5.monitor.canDropOnTarget(targetId);
+    });
+
+    if (canDrop) {
+      // IE requires this to fire dragover events
+      e.preventDefault();
+      e.dataTransfer.dropEffect = this.getCurrentDropEffect();
+    }
+  };
+
+  HTML5Backend.prototype.handleTopDragOverCapture = function handleTopDragOverCapture() {
+    this.dragOverTargetIds = [];
+  };
+
+  HTML5Backend.prototype.handleDragOver = function handleDragOver(e, targetId) {
+    this.dragOverTargetIds.unshift(targetId);
+  };
+
+  HTML5Backend.prototype.handleTopDragOver = function handleTopDragOver(e) {
+    var _this6 = this;
+
+    var dragOverTargetIds = this.dragOverTargetIds;
+
+    this.dragOverTargetIds = [];
+
+    if (!this.monitor.isDragging()) {
+      // This is probably a native item type we don't understand.
+      // Prevent default "drop and blow away the whole document" action.
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'none';
+      return;
+    }
+
+    this.actions.hover(dragOverTargetIds, {
+      clientOffset: _OffsetUtils.getEventClientOffset(e)
+    });
+
+    var canDrop = dragOverTargetIds.some(function (targetId) {
+      return _this6.monitor.canDropOnTarget(targetId);
+    });
+
+    if (canDrop) {
+      // Show user-specified drop effect.
+      e.preventDefault();
+      e.dataTransfer.dropEffect = this.getCurrentDropEffect();
+    } else if (this.isDraggingNativeItem()) {
+      // Don't show a nice cursor but still prevent default
+      // "drop and blow away the whole document" action.
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'none';
+    } else if (this.checkIfCurrentDragSourceRectChanged()) {
+      // Prevent animating to incorrect position.
+      // Drop effect must be other than 'none' to prevent animation.
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    }
+  };
+
+  HTML5Backend.prototype.handleTopDragLeaveCapture = function handleTopDragLeaveCapture(e) {
+    if (this.isDraggingNativeItem()) {
+      e.preventDefault();
+    }
+
+    var isLastLeave = this.enterLeaveCounter.leave(e.target);
+    if (!isLastLeave) {
+      return;
+    }
+
+    if (this.isDraggingNativeItem()) {
+      this.endDragNativeItem();
+    }
+  };
+
+  HTML5Backend.prototype.handleTopDropCapture = function handleTopDropCapture(e) {
+    this.dropTargetIds = [];
+    e.preventDefault();
+
+    if (this.isDraggingNativeItem()) {
+      this.currentNativeSource.mutateItemByReadingDataTransfer(e.dataTransfer);
+    }
+
+    this.enterLeaveCounter.reset();
+  };
+
+  HTML5Backend.prototype.handleDrop = function handleDrop(e, targetId) {
+    this.dropTargetIds.unshift(targetId);
+  };
+
+  HTML5Backend.prototype.handleTopDrop = function handleTopDrop(e) {
+    var dropTargetIds = this.dropTargetIds;
+
+    this.dropTargetIds = [];
+
+    this.actions.hover(dropTargetIds, {
+      clientOffset: _OffsetUtils.getEventClientOffset(e)
+    });
+    this.actions.drop();
+
+    if (this.isDraggingNativeItem()) {
+      this.endDragNativeItem();
+    } else {
+      this.endDragIfSourceWasRemovedFromDOM();
+    }
+  };
+
+  HTML5Backend.prototype.handleSelectStart = function handleSelectStart(e) {
+    // Prevent selection on IE
+    // and instead ask it to consider dragging.
+    if (typeof e.target.dragDrop === 'function') {
+      e.preventDefault();
+      e.target.dragDrop();
+    }
+  };
+
+  return HTML5Backend;
+})();
+
+exports['default'] = HTML5Backend;
+module.exports = exports['default'];
+},{"./BrowserDetector":5,"./EnterLeaveCounter":6,"./NativeDragSources":9,"./NativeTypes":10,"./OffsetUtils":11,"./shallowEqual":14,"lodash/object/defaults":56}],8:[function(require,module,exports){
+"use strict";
+
+exports.__esModule = true;
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var MonotonicInterpolant = (function () {
+  function MonotonicInterpolant(xs, ys) {
+    _classCallCheck(this, MonotonicInterpolant);
+
+    var length = xs.length;
+
+    // Rearrange xs and ys so that xs is sorted
+    var indexes = [];
+    for (var i = 0; i < length; i++) {
+      indexes.push(i);
+    }
+    indexes.sort(function (a, b) {
+      return xs[a] < xs[b] ? -1 : 1;
+    });
+
+    // Get consecutive differences and slopes
+    var dys = [];
+    var dxs = [];
+    var ms = [];
+    var dx = undefined;
+    var dy = undefined;
+    for (var i = 0; i < length - 1; i++) {
+      dx = xs[i + 1] - xs[i];
+      dy = ys[i + 1] - ys[i];
+      dxs.push(dx);
+      dys.push(dy);
+      ms.push(dy / dx);
+    }
+
+    // Get degree-1 coefficients
+    var c1s = [ms[0]];
+    for (var i = 0; i < dxs.length - 1; i++) {
+      var _m = ms[i];
+      var mNext = ms[i + 1];
+      if (_m * mNext <= 0) {
+        c1s.push(0);
+      } else {
+        dx = dxs[i];
+        var dxNext = dxs[i + 1];
+        var common = dx + dxNext;
+        c1s.push(3 * common / ((common + dxNext) / _m + (common + dx) / mNext));
+      }
+    }
+    c1s.push(ms[ms.length - 1]);
+
+    // Get degree-2 and degree-3 coefficients
+    var c2s = [];
+    var c3s = [];
+    var m = undefined;
+    for (var i = 0; i < c1s.length - 1; i++) {
+      m = ms[i];
+      var c1 = c1s[i];
+      var invDx = 1 / dxs[i];
+      var common = c1 + c1s[i + 1] - m - m;
+      c2s.push((m - c1 - common) * invDx);
+      c3s.push(common * invDx * invDx);
+    }
+
+    this.xs = xs;
+    this.ys = ys;
+    this.c1s = c1s;
+    this.c2s = c2s;
+    this.c3s = c3s;
+  }
+
+  MonotonicInterpolant.prototype.interpolate = function interpolate(x) {
+    var xs = this.xs;
+    var ys = this.ys;
+    var c1s = this.c1s;
+    var c2s = this.c2s;
+    var c3s = this.c3s;
+
+    // The rightmost point in the dataset should give an exact result
+    var i = xs.length - 1;
+    if (x === xs[i]) {
+      return ys[i];
+    }
+
+    // Search for the interval x is in, returning the corresponding y if x is one of the original xs
+    var low = 0;
+    var high = c3s.length - 1;
+    var mid = undefined;
+    while (low <= high) {
+      mid = Math.floor(0.5 * (low + high));
+      var xHere = xs[mid];
+      if (xHere < x) {
+        low = mid + 1;
+      } else if (xHere > x) {
+        high = mid - 1;
+      } else {
+        return ys[mid];
+      }
+    }
+    i = Math.max(0, high);
+
+    // Interpolate
+    var diff = x - xs[i];
+    var diffSq = diff * diff;
+    return ys[i] + c1s[i] * diff + c2s[i] * diffSq + c3s[i] * diff * diffSq;
+  };
+
+  return MonotonicInterpolant;
+})();
+
+exports["default"] = MonotonicInterpolant;
+module.exports = exports["default"];
+},{}],9:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+var _nativeTypesConfig;
+
+exports.createNativeDragSource = createNativeDragSource;
+exports.matchNativeItemType = matchNativeItemType;
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj['default'] = obj; return newObj; } }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+var _NativeTypes = require('./NativeTypes');
+
+var NativeTypes = _interopRequireWildcard(_NativeTypes);
+
+function getDataFromDataTransfer(dataTransfer, typesToTry, defaultValue) {
+  var result = typesToTry.reduce(function (resultSoFar, typeToTry) {
+    return resultSoFar || dataTransfer.getData(typeToTry);
+  }, null);
+
+  return result != null ? // eslint-disable-line eqeqeq
+  result : defaultValue;
+}
+
+var nativeTypesConfig = (_nativeTypesConfig = {}, _defineProperty(_nativeTypesConfig, NativeTypes.FILE, {
+  exposeProperty: 'files',
+  matchesTypes: ['Files'],
+  getData: function getData(dataTransfer) {
+    return Array.prototype.slice.call(dataTransfer.files);
+  }
+}), _defineProperty(_nativeTypesConfig, NativeTypes.URL, {
+  exposeProperty: 'urls',
+  matchesTypes: ['Url', 'text/uri-list'],
+  getData: function getData(dataTransfer, matchesTypes) {
+    return getDataFromDataTransfer(dataTransfer, matchesTypes, '').split('\n');
+  }
+}), _defineProperty(_nativeTypesConfig, NativeTypes.TEXT, {
+  exposeProperty: 'text',
+  matchesTypes: ['Text', 'text/plain'],
+  getData: function getData(dataTransfer, matchesTypes) {
+    return getDataFromDataTransfer(dataTransfer, matchesTypes, '');
+  }
+}), _nativeTypesConfig);
+
+function createNativeDragSource(type) {
+  var _nativeTypesConfig$type = nativeTypesConfig[type];
+  var exposeProperty = _nativeTypesConfig$type.exposeProperty;
+  var matchesTypes = _nativeTypesConfig$type.matchesTypes;
+  var getData = _nativeTypesConfig$type.getData;
+
+  return (function () {
+    function NativeDragSource() {
+      _classCallCheck(this, NativeDragSource);
+
+      this.item = Object.defineProperties({}, _defineProperty({}, exposeProperty, {
+        get: function get() {
+          console.warn( // eslint-disable-line no-console
+          'Browser doesn\'t allow reading "' + exposeProperty + '" until the drop event.');
+          return null;
+        },
+        configurable: true,
+        enumerable: true
+      }));
+    }
+
+    NativeDragSource.prototype.mutateItemByReadingDataTransfer = function mutateItemByReadingDataTransfer(dataTransfer) {
+      delete this.item[exposeProperty];
+      this.item[exposeProperty] = getData(dataTransfer, matchesTypes);
+    };
+
+    NativeDragSource.prototype.canDrag = function canDrag() {
+      return true;
+    };
+
+    NativeDragSource.prototype.beginDrag = function beginDrag() {
+      return this.item;
+    };
+
+    NativeDragSource.prototype.isDragging = function isDragging(monitor, handle) {
+      return handle === monitor.getSourceId();
+    };
+
+    NativeDragSource.prototype.endDrag = function endDrag() {};
+
+    return NativeDragSource;
+  })();
+}
+
+function matchNativeItemType(dataTransfer) {
+  var dataTransferTypes = Array.prototype.slice.call(dataTransfer.types || []);
+
+  return Object.keys(nativeTypesConfig).filter(function (nativeItemType) {
+    var matchesTypes = nativeTypesConfig[nativeItemType].matchesTypes;
+
+    return matchesTypes.some(function (t) {
+      return dataTransferTypes.indexOf(t) > -1;
+    });
+  })[0] || null;
+}
+},{"./NativeTypes":10}],10:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+var FILE = '__NATIVE_FILE__';
+exports.FILE = FILE;
+var URL = '__NATIVE_URL__';
+exports.URL = URL;
+var TEXT = '__NATIVE_TEXT__';
+exports.TEXT = TEXT;
+},{}],11:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports.getNodeClientOffset = getNodeClientOffset;
+exports.getEventClientOffset = getEventClientOffset;
+exports.getDragPreviewOffset = getDragPreviewOffset;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _BrowserDetector = require('./BrowserDetector');
+
+var _MonotonicInterpolant = require('./MonotonicInterpolant');
+
+var _MonotonicInterpolant2 = _interopRequireDefault(_MonotonicInterpolant);
+
+var ELEMENT_NODE = 1;
+
+function getNodeClientOffset(node) {
+  var el = node.nodeType === ELEMENT_NODE ? node : node.parentElement;
+
+  if (!el) {
+    return null;
+  }
+
+  var _el$getBoundingClientRect = el.getBoundingClientRect();
+
+  var top = _el$getBoundingClientRect.top;
+  var left = _el$getBoundingClientRect.left;
+
+  return { x: left, y: top };
+}
+
+function getEventClientOffset(e) {
+  return {
+    x: e.clientX,
+    y: e.clientY
+  };
+}
+
+function getDragPreviewOffset(sourceNode, dragPreview, clientOffset, anchorPoint) {
+  // The browsers will use the image intrinsic size under different conditions.
+  // Firefox only cares if it's an image, but WebKit also wants it to be detached.
+  var isImage = dragPreview.nodeName === 'IMG' && (_BrowserDetector.isFirefox() || !document.documentElement.contains(dragPreview));
+  var dragPreviewNode = isImage ? sourceNode : dragPreview;
+
+  var dragPreviewNodeOffsetFromClient = getNodeClientOffset(dragPreviewNode);
+  var offsetFromDragPreview = {
+    x: clientOffset.x - dragPreviewNodeOffsetFromClient.x,
+    y: clientOffset.y - dragPreviewNodeOffsetFromClient.y
+  };
+
+  var sourceWidth = sourceNode.offsetWidth;
+  var sourceHeight = sourceNode.offsetHeight;
+  var anchorX = anchorPoint.anchorX;
+  var anchorY = anchorPoint.anchorY;
+
+  var dragPreviewWidth = isImage ? dragPreview.width : sourceWidth;
+  var dragPreviewHeight = isImage ? dragPreview.height : sourceHeight;
+
+  // Work around @2x coordinate discrepancies in browsers
+  if (_BrowserDetector.isSafari() && isImage) {
+    dragPreviewHeight /= window.devicePixelRatio;
+    dragPreviewWidth /= window.devicePixelRatio;
+  } else if (_BrowserDetector.isFirefox() && !isImage) {
+    dragPreviewHeight *= window.devicePixelRatio;
+    dragPreviewWidth *= window.devicePixelRatio;
+  }
+
+  // Interpolate coordinates depending on anchor point
+  // If you know a simpler way to do this, let me know
+  var interpolantX = new _MonotonicInterpolant2['default']([0, 0.5, 1], [
+  // Dock to the left
+  offsetFromDragPreview.x,
+  // Align at the center
+  offsetFromDragPreview.x / sourceWidth * dragPreviewWidth,
+  // Dock to the right
+  offsetFromDragPreview.x + dragPreviewWidth - sourceWidth]);
+  var interpolantY = new _MonotonicInterpolant2['default']([0, 0.5, 1], [
+  // Dock to the top
+  offsetFromDragPreview.y,
+  // Align at the center
+  offsetFromDragPreview.y / sourceHeight * dragPreviewHeight,
+  // Dock to the bottom
+  offsetFromDragPreview.y + dragPreviewHeight - sourceHeight]);
+  var x = interpolantX.interpolate(anchorX);
+  var y = interpolantY.interpolate(anchorY);
+
+  // Work around Safari 8 positioning bug
+  if (_BrowserDetector.isSafari() && isImage) {
+    // We'll have to wait for @3x to see if this is entirely correct
+    y += (window.devicePixelRatio - 1) * dragPreviewHeight;
+  }
+
+  return { x: x, y: y };
+}
+},{"./BrowserDetector":5,"./MonotonicInterpolant":8}],12:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = getEmptyImage;
+var emptyImage = undefined;
+
+function getEmptyImage() {
+  if (!emptyImage) {
+    emptyImage = new Image();
+    emptyImage.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+  }
+
+  return emptyImage;
+}
+
+module.exports = exports['default'];
+},{}],13:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = createHTML5Backend;
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj['default'] = obj; return newObj; } }
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _HTML5Backend = require('./HTML5Backend');
+
+var _HTML5Backend2 = _interopRequireDefault(_HTML5Backend);
+
+var _getEmptyImage = require('./getEmptyImage');
+
+var _getEmptyImage2 = _interopRequireDefault(_getEmptyImage);
+
+var _NativeTypes = require('./NativeTypes');
+
+var NativeTypes = _interopRequireWildcard(_NativeTypes);
+
+exports.NativeTypes = NativeTypes;
+exports.getEmptyImage = _getEmptyImage2['default'];
+
+function createHTML5Backend(manager) {
+  return new _HTML5Backend2['default'](manager);
+}
+},{"./HTML5Backend":7,"./NativeTypes":10,"./getEmptyImage":12}],14:[function(require,module,exports){
+"use strict";
+
+exports.__esModule = true;
+exports["default"] = shallowEqual;
+
+function shallowEqual(objA, objB) {
+  if (objA === objB) {
+    return true;
+  }
+
+  var keysA = Object.keys(objA);
+  var keysB = Object.keys(objB);
+
+  if (keysA.length !== keysB.length) {
+    return false;
+  }
+
+  // Test for A's keys different from B.
+  var hasOwn = Object.prototype.hasOwnProperty;
+  for (var i = 0; i < keysA.length; i++) {
+    if (!hasOwn.call(objB, keysA[i]) || objA[keysA[i]] !== objB[keysA[i]]) {
+      return false;
+    }
+
+    var valA = objA[keysA[i]];
+    var valB = objB[keysA[i]];
+
+    if (valA !== valB) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+module.exports = exports["default"];
+},{}],15:[function(require,module,exports){
+var baseFlatten = require('../internal/baseFlatten'),
+    baseUniq = require('../internal/baseUniq'),
+    restParam = require('../function/restParam');
+
+/**
+ * Creates an array of unique values, in order, from all of the provided arrays
+ * using [`SameValueZero`](http://ecma-international.org/ecma-262/6.0/#sec-samevaluezero)
+ * for equality comparisons.
+ *
+ * @static
+ * @memberOf _
+ * @category Array
+ * @param {...Array} [arrays] The arrays to inspect.
+ * @returns {Array} Returns the new array of combined values.
+ * @example
+ *
+ * _.union([1, 2], [4, 2], [2, 1]);
+ * // => [1, 2, 4]
+ */
+var union = restParam(function(arrays) {
+  return baseUniq(baseFlatten(arrays, false, true));
+});
+
+module.exports = union;
+
+},{"../function/restParam":18,"../internal/baseFlatten":27,"../internal/baseUniq":30}],16:[function(require,module,exports){
+var baseDifference = require('../internal/baseDifference'),
+    isArrayLike = require('../internal/isArrayLike'),
+    restParam = require('../function/restParam');
+
+/**
+ * Creates an array excluding all provided values using
+ * [`SameValueZero`](http://ecma-international.org/ecma-262/6.0/#sec-samevaluezero)
+ * for equality comparisons.
+ *
+ * @static
+ * @memberOf _
+ * @category Array
+ * @param {Array} array The array to filter.
+ * @param {...*} [values] The values to exclude.
+ * @returns {Array} Returns the new array of filtered values.
+ * @example
+ *
+ * _.without([1, 2, 1, 3], 1, 2);
+ * // => [3]
+ */
+var without = restParam(function(array, values) {
+  return isArrayLike(array)
+    ? baseDifference(array, values)
+    : [];
+});
+
+module.exports = without;
+
+},{"../function/restParam":18,"../internal/baseDifference":26,"../internal/isArrayLike":40}],17:[function(require,module,exports){
+var MapCache = require('../internal/MapCache');
+
+/** Used as the `TypeError` message for "Functions" methods. */
+var FUNC_ERROR_TEXT = 'Expected a function';
+
+/**
+ * Creates a function that memoizes the result of `func`. If `resolver` is
+ * provided it determines the cache key for storing the result based on the
+ * arguments provided to the memoized function. By default, the first argument
+ * provided to the memoized function is coerced to a string and used as the
+ * cache key. The `func` is invoked with the `this` binding of the memoized
+ * function.
+ *
+ * **Note:** The cache is exposed as the `cache` property on the memoized
+ * function. Its creation may be customized by replacing the `_.memoize.Cache`
+ * constructor with one whose instances implement the [`Map`](http://ecma-international.org/ecma-262/6.0/#sec-properties-of-the-map-prototype-object)
+ * method interface of `get`, `has`, and `set`.
+ *
+ * @static
+ * @memberOf _
+ * @category Function
+ * @param {Function} func The function to have its output memoized.
+ * @param {Function} [resolver] The function to resolve the cache key.
+ * @returns {Function} Returns the new memoizing function.
+ * @example
+ *
+ * var upperCase = _.memoize(function(string) {
+ *   return string.toUpperCase();
+ * });
+ *
+ * upperCase('fred');
+ * // => 'FRED'
+ *
+ * // modifying the result cache
+ * upperCase.cache.set('fred', 'BARNEY');
+ * upperCase('fred');
+ * // => 'BARNEY'
+ *
+ * // replacing `_.memoize.Cache`
+ * var object = { 'user': 'fred' };
+ * var other = { 'user': 'barney' };
+ * var identity = _.memoize(_.identity);
+ *
+ * identity(object);
+ * // => { 'user': 'fred' }
+ * identity(other);
+ * // => { 'user': 'fred' }
+ *
+ * _.memoize.Cache = WeakMap;
+ * var identity = _.memoize(_.identity);
+ *
+ * identity(object);
+ * // => { 'user': 'fred' }
+ * identity(other);
+ * // => { 'user': 'barney' }
+ */
+function memoize(func, resolver) {
+  if (typeof func != 'function' || (resolver && typeof resolver != 'function')) {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  var memoized = function() {
+    var args = arguments,
+        key = resolver ? resolver.apply(this, args) : args[0],
+        cache = memoized.cache;
+
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+    var result = func.apply(this, args);
+    memoized.cache = cache.set(key, result);
+    return result;
+  };
+  memoized.cache = new memoize.Cache;
+  return memoized;
+}
+
+// Assign cache to `_.memoize`.
+memoize.Cache = MapCache;
+
+module.exports = memoize;
+
+},{"../internal/MapCache":19}],18:[function(require,module,exports){
+/** Used as the `TypeError` message for "Functions" methods. */
+var FUNC_ERROR_TEXT = 'Expected a function';
+
+/* Native method references for those with the same name as other `lodash` methods. */
+var nativeMax = Math.max;
+
+/**
+ * Creates a function that invokes `func` with the `this` binding of the
+ * created function and arguments from `start` and beyond provided as an array.
+ *
+ * **Note:** This method is based on the [rest parameter](https://developer.mozilla.org/Web/JavaScript/Reference/Functions/rest_parameters).
+ *
+ * @static
+ * @memberOf _
+ * @category Function
+ * @param {Function} func The function to apply a rest parameter to.
+ * @param {number} [start=func.length-1] The start position of the rest parameter.
+ * @returns {Function} Returns the new function.
+ * @example
+ *
+ * var say = _.restParam(function(what, names) {
+ *   return what + ' ' + _.initial(names).join(', ') +
+ *     (_.size(names) > 1 ? ', & ' : '') + _.last(names);
+ * });
+ *
+ * say('hello', 'fred', 'barney', 'pebbles');
+ * // => 'hello fred, barney, & pebbles'
+ */
+function restParam(func, start) {
+  if (typeof func != 'function') {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  start = nativeMax(start === undefined ? (func.length - 1) : (+start || 0), 0);
+  return function() {
+    var args = arguments,
+        index = -1,
+        length = nativeMax(args.length - start, 0),
+        rest = Array(length);
+
+    while (++index < length) {
+      rest[index] = args[start + index];
+    }
+    switch (start) {
+      case 0: return func.call(this, rest);
+      case 1: return func.call(this, args[0], rest);
+      case 2: return func.call(this, args[0], args[1], rest);
+    }
+    var otherArgs = Array(start + 1);
+    index = -1;
+    while (++index < start) {
+      otherArgs[index] = args[index];
+    }
+    otherArgs[start] = rest;
+    return func.apply(this, otherArgs);
+  };
+}
+
+module.exports = restParam;
+
+},{}],19:[function(require,module,exports){
+var mapDelete = require('./mapDelete'),
+    mapGet = require('./mapGet'),
+    mapHas = require('./mapHas'),
+    mapSet = require('./mapSet');
+
+/**
+ * Creates a cache object to store key/value pairs.
+ *
+ * @private
+ * @static
+ * @name Cache
+ * @memberOf _.memoize
+ */
+function MapCache() {
+  this.__data__ = {};
+}
+
+// Add functions to the `Map` cache.
+MapCache.prototype['delete'] = mapDelete;
+MapCache.prototype.get = mapGet;
+MapCache.prototype.has = mapHas;
+MapCache.prototype.set = mapSet;
+
+module.exports = MapCache;
+
+},{"./mapDelete":45,"./mapGet":46,"./mapHas":47,"./mapSet":48}],20:[function(require,module,exports){
+(function (global){
+var cachePush = require('./cachePush'),
+    getNative = require('./getNative');
+
+/** Native method references. */
+var Set = getNative(global, 'Set');
+
+/* Native method references for those with the same name as other `lodash` methods. */
+var nativeCreate = getNative(Object, 'create');
+
+/**
+ *
+ * Creates a cache object to store unique values.
+ *
+ * @private
+ * @param {Array} [values] The values to cache.
+ */
+function SetCache(values) {
+  var length = values ? values.length : 0;
+
+  this.data = { 'hash': nativeCreate(null), 'set': new Set };
+  while (length--) {
+    this.push(values[length]);
+  }
+}
+
+// Add functions to the `Set` cache.
+SetCache.prototype.push = cachePush;
+
+module.exports = SetCache;
+
+}).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./cachePush":33,"./getNative":38}],21:[function(require,module,exports){
+/**
+ * Appends the elements of `values` to `array`.
+ *
+ * @private
+ * @param {Array} array The array to modify.
+ * @param {Array} values The values to append.
+ * @returns {Array} Returns `array`.
+ */
+function arrayPush(array, values) {
+  var index = -1,
+      length = values.length,
+      offset = array.length;
+
+  while (++index < length) {
+    array[offset + index] = values[index];
+  }
+  return array;
+}
+
+module.exports = arrayPush;
+
+},{}],22:[function(require,module,exports){
+/**
+ * Used by `_.defaults` to customize its `_.assign` use.
+ *
+ * @private
+ * @param {*} objectValue The destination object property value.
+ * @param {*} sourceValue The source object property value.
+ * @returns {*} Returns the value to assign to the destination object.
+ */
+function assignDefaults(objectValue, sourceValue) {
+  return objectValue === undefined ? sourceValue : objectValue;
+}
+
+module.exports = assignDefaults;
+
+},{}],23:[function(require,module,exports){
+var keys = require('../object/keys');
+
+/**
+ * A specialized version of `_.assign` for customizing assigned values without
+ * support for argument juggling, multiple sources, and `this` binding `customizer`
+ * functions.
+ *
+ * @private
+ * @param {Object} object The destination object.
+ * @param {Object} source The source object.
+ * @param {Function} customizer The function to customize assigned values.
+ * @returns {Object} Returns `object`.
+ */
+function assignWith(object, source, customizer) {
+  var index = -1,
+      props = keys(source),
+      length = props.length;
+
+  while (++index < length) {
+    var key = props[index],
+        value = object[key],
+        result = customizer(value, source[key], key, object, source);
+
+    if ((result === result ? (result !== value) : (value === value)) ||
+        (value === undefined && !(key in object))) {
+      object[key] = result;
+    }
+  }
+  return object;
+}
+
+module.exports = assignWith;
+
+},{"../object/keys":57}],24:[function(require,module,exports){
+var baseCopy = require('./baseCopy'),
+    keys = require('../object/keys');
+
+/**
+ * The base implementation of `_.assign` without support for argument juggling,
+ * multiple sources, and `customizer` functions.
+ *
+ * @private
+ * @param {Object} object The destination object.
+ * @param {Object} source The source object.
+ * @returns {Object} Returns `object`.
+ */
+function baseAssign(object, source) {
+  return source == null
+    ? object
+    : baseCopy(source, keys(source), object);
+}
+
+module.exports = baseAssign;
+
+},{"../object/keys":57,"./baseCopy":25}],25:[function(require,module,exports){
+/**
+ * Copies properties of `source` to `object`.
+ *
+ * @private
+ * @param {Object} source The object to copy properties from.
+ * @param {Array} props The property names to copy.
+ * @param {Object} [object={}] The object to copy properties to.
+ * @returns {Object} Returns `object`.
+ */
+function baseCopy(source, props, object) {
+  object || (object = {});
+
+  var index = -1,
+      length = props.length;
+
+  while (++index < length) {
+    var key = props[index];
+    object[key] = source[key];
+  }
+  return object;
+}
+
+module.exports = baseCopy;
+
+},{}],26:[function(require,module,exports){
+var baseIndexOf = require('./baseIndexOf'),
+    cacheIndexOf = require('./cacheIndexOf'),
+    createCache = require('./createCache');
+
+/** Used as the size to enable large array optimizations. */
+var LARGE_ARRAY_SIZE = 200;
+
+/**
+ * The base implementation of `_.difference` which accepts a single array
+ * of values to exclude.
+ *
+ * @private
+ * @param {Array} array The array to inspect.
+ * @param {Array} values The values to exclude.
+ * @returns {Array} Returns the new array of filtered values.
+ */
+function baseDifference(array, values) {
+  var length = array ? array.length : 0,
+      result = [];
+
+  if (!length) {
+    return result;
+  }
+  var index = -1,
+      indexOf = baseIndexOf,
+      isCommon = true,
+      cache = (isCommon && values.length >= LARGE_ARRAY_SIZE) ? createCache(values) : null,
+      valuesLength = values.length;
+
+  if (cache) {
+    indexOf = cacheIndexOf;
+    isCommon = false;
+    values = cache;
+  }
+  outer:
+  while (++index < length) {
+    var value = array[index];
+
+    if (isCommon && value === value) {
+      var valuesIndex = valuesLength;
+      while (valuesIndex--) {
+        if (values[valuesIndex] === value) {
+          continue outer;
+        }
+      }
+      result.push(value);
+    }
+    else if (indexOf(values, value, 0) < 0) {
+      result.push(value);
+    }
+  }
+  return result;
+}
+
+module.exports = baseDifference;
+
+},{"./baseIndexOf":28,"./cacheIndexOf":32,"./createCache":35}],27:[function(require,module,exports){
+var arrayPush = require('./arrayPush'),
+    isArguments = require('../lang/isArguments'),
+    isArray = require('../lang/isArray'),
+    isArrayLike = require('./isArrayLike'),
+    isObjectLike = require('./isObjectLike');
+
+/**
+ * The base implementation of `_.flatten` with added support for restricting
+ * flattening and specifying the start index.
+ *
+ * @private
+ * @param {Array} array The array to flatten.
+ * @param {boolean} [isDeep] Specify a deep flatten.
+ * @param {boolean} [isStrict] Restrict flattening to arrays-like objects.
+ * @param {Array} [result=[]] The initial result value.
+ * @returns {Array} Returns the new flattened array.
+ */
+function baseFlatten(array, isDeep, isStrict, result) {
+  result || (result = []);
+
+  var index = -1,
+      length = array.length;
+
+  while (++index < length) {
+    var value = array[index];
+    if (isObjectLike(value) && isArrayLike(value) &&
+        (isStrict || isArray(value) || isArguments(value))) {
+      if (isDeep) {
+        // Recursively flatten arrays (susceptible to call stack limits).
+        baseFlatten(value, isDeep, isStrict, result);
+      } else {
+        arrayPush(result, value);
+      }
+    } else if (!isStrict) {
+      result[result.length] = value;
+    }
+  }
+  return result;
+}
+
+module.exports = baseFlatten;
+
+},{"../lang/isArguments":50,"../lang/isArray":51,"./arrayPush":21,"./isArrayLike":40,"./isObjectLike":44}],28:[function(require,module,exports){
+var indexOfNaN = require('./indexOfNaN');
+
+/**
+ * The base implementation of `_.indexOf` without support for binary searches.
+ *
+ * @private
+ * @param {Array} array The array to search.
+ * @param {*} value The value to search for.
+ * @param {number} fromIndex The index to search from.
+ * @returns {number} Returns the index of the matched value, else `-1`.
+ */
+function baseIndexOf(array, value, fromIndex) {
+  if (value !== value) {
+    return indexOfNaN(array, fromIndex);
+  }
+  var index = fromIndex - 1,
+      length = array.length;
+
+  while (++index < length) {
+    if (array[index] === value) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+module.exports = baseIndexOf;
+
+},{"./indexOfNaN":39}],29:[function(require,module,exports){
+/**
+ * The base implementation of `_.property` without support for deep paths.
+ *
+ * @private
+ * @param {string} key The key of the property to get.
+ * @returns {Function} Returns the new function.
+ */
+function baseProperty(key) {
+  return function(object) {
+    return object == null ? undefined : object[key];
+  };
+}
+
+module.exports = baseProperty;
+
+},{}],30:[function(require,module,exports){
+var baseIndexOf = require('./baseIndexOf'),
+    cacheIndexOf = require('./cacheIndexOf'),
+    createCache = require('./createCache');
+
+/** Used as the size to enable large array optimizations. */
+var LARGE_ARRAY_SIZE = 200;
+
+/**
+ * The base implementation of `_.uniq` without support for callback shorthands
+ * and `this` binding.
+ *
+ * @private
+ * @param {Array} array The array to inspect.
+ * @param {Function} [iteratee] The function invoked per iteration.
+ * @returns {Array} Returns the new duplicate free array.
+ */
+function baseUniq(array, iteratee) {
+  var index = -1,
+      indexOf = baseIndexOf,
+      length = array.length,
+      isCommon = true,
+      isLarge = isCommon && length >= LARGE_ARRAY_SIZE,
+      seen = isLarge ? createCache() : null,
+      result = [];
+
+  if (seen) {
+    indexOf = cacheIndexOf;
+    isCommon = false;
+  } else {
+    isLarge = false;
+    seen = iteratee ? [] : result;
+  }
+  outer:
+  while (++index < length) {
+    var value = array[index],
+        computed = iteratee ? iteratee(value, index, array) : value;
+
+    if (isCommon && value === value) {
+      var seenIndex = seen.length;
+      while (seenIndex--) {
+        if (seen[seenIndex] === computed) {
+          continue outer;
+        }
+      }
+      if (iteratee) {
+        seen.push(computed);
+      }
+      result.push(value);
+    }
+    else if (indexOf(seen, computed, 0) < 0) {
+      if (iteratee || isLarge) {
+        seen.push(computed);
+      }
+      result.push(value);
+    }
+  }
+  return result;
+}
+
+module.exports = baseUniq;
+
+},{"./baseIndexOf":28,"./cacheIndexOf":32,"./createCache":35}],31:[function(require,module,exports){
+var identity = require('../utility/identity');
+
+/**
+ * A specialized version of `baseCallback` which only supports `this` binding
+ * and specifying the number of arguments to provide to `func`.
+ *
+ * @private
+ * @param {Function} func The function to bind.
+ * @param {*} thisArg The `this` binding of `func`.
+ * @param {number} [argCount] The number of arguments to provide to `func`.
+ * @returns {Function} Returns the callback.
+ */
+function bindCallback(func, thisArg, argCount) {
+  if (typeof func != 'function') {
+    return identity;
+  }
+  if (thisArg === undefined) {
+    return func;
+  }
+  switch (argCount) {
+    case 1: return function(value) {
+      return func.call(thisArg, value);
+    };
+    case 3: return function(value, index, collection) {
+      return func.call(thisArg, value, index, collection);
+    };
+    case 4: return function(accumulator, value, index, collection) {
+      return func.call(thisArg, accumulator, value, index, collection);
+    };
+    case 5: return function(value, other, key, object, source) {
+      return func.call(thisArg, value, other, key, object, source);
+    };
+  }
+  return function() {
+    return func.apply(thisArg, arguments);
+  };
+}
+
+module.exports = bindCallback;
+
+},{"../utility/identity":59}],32:[function(require,module,exports){
+var isObject = require('../lang/isObject');
+
+/**
+ * Checks if `value` is in `cache` mimicking the return signature of
+ * `_.indexOf` by returning `0` if the value is found, else `-1`.
+ *
+ * @private
+ * @param {Object} cache The cache to search.
+ * @param {*} value The value to search for.
+ * @returns {number} Returns `0` if `value` is found, else `-1`.
+ */
+function cacheIndexOf(cache, value) {
+  var data = cache.data,
+      result = (typeof value == 'string' || isObject(value)) ? data.set.has(value) : data.hash[value];
+
+  return result ? 0 : -1;
+}
+
+module.exports = cacheIndexOf;
+
+},{"../lang/isObject":54}],33:[function(require,module,exports){
+var isObject = require('../lang/isObject');
+
+/**
+ * Adds `value` to the cache.
+ *
+ * @private
+ * @name push
+ * @memberOf SetCache
+ * @param {*} value The value to cache.
+ */
+function cachePush(value) {
+  var data = this.data;
+  if (typeof value == 'string' || isObject(value)) {
+    data.set.add(value);
+  } else {
+    data.hash[value] = true;
+  }
+}
+
+module.exports = cachePush;
+
+},{"../lang/isObject":54}],34:[function(require,module,exports){
+var bindCallback = require('./bindCallback'),
+    isIterateeCall = require('./isIterateeCall'),
+    restParam = require('../function/restParam');
+
+/**
+ * Creates a `_.assign`, `_.defaults`, or `_.merge` function.
+ *
+ * @private
+ * @param {Function} assigner The function to assign values.
+ * @returns {Function} Returns the new assigner function.
+ */
+function createAssigner(assigner) {
+  return restParam(function(object, sources) {
+    var index = -1,
+        length = object == null ? 0 : sources.length,
+        customizer = length > 2 ? sources[length - 2] : undefined,
+        guard = length > 2 ? sources[2] : undefined,
+        thisArg = length > 1 ? sources[length - 1] : undefined;
+
+    if (typeof customizer == 'function') {
+      customizer = bindCallback(customizer, thisArg, 5);
+      length -= 2;
+    } else {
+      customizer = typeof thisArg == 'function' ? thisArg : undefined;
+      length -= (customizer ? 1 : 0);
+    }
+    if (guard && isIterateeCall(sources[0], sources[1], guard)) {
+      customizer = length < 3 ? undefined : customizer;
+      length = 1;
+    }
+    while (++index < length) {
+      var source = sources[index];
+      if (source) {
+        assigner(object, source, customizer);
+      }
+    }
+    return object;
+  });
+}
+
+module.exports = createAssigner;
+
+},{"../function/restParam":18,"./bindCallback":31,"./isIterateeCall":42}],35:[function(require,module,exports){
+(function (global){
+var SetCache = require('./SetCache'),
+    getNative = require('./getNative');
+
+/** Native method references. */
+var Set = getNative(global, 'Set');
+
+/* Native method references for those with the same name as other `lodash` methods. */
+var nativeCreate = getNative(Object, 'create');
+
+/**
+ * Creates a `Set` cache object to optimize linear searches of large arrays.
+ *
+ * @private
+ * @param {Array} [values] The values to cache.
+ * @returns {null|Object} Returns the new cache object if `Set` is supported, else `null`.
+ */
+function createCache(values) {
+  return (nativeCreate && Set) ? new SetCache(values) : null;
+}
+
+module.exports = createCache;
+
+}).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./SetCache":20,"./getNative":38}],36:[function(require,module,exports){
+var restParam = require('../function/restParam');
+
+/**
+ * Creates a `_.defaults` or `_.defaultsDeep` function.
+ *
+ * @private
+ * @param {Function} assigner The function to assign values.
+ * @param {Function} customizer The function to customize assigned values.
+ * @returns {Function} Returns the new defaults function.
+ */
+function createDefaults(assigner, customizer) {
+  return restParam(function(args) {
+    var object = args[0];
+    if (object == null) {
+      return object;
+    }
+    args.push(customizer);
+    return assigner.apply(undefined, args);
+  });
+}
+
+module.exports = createDefaults;
+
+},{"../function/restParam":18}],37:[function(require,module,exports){
+var baseProperty = require('./baseProperty');
+
+/**
+ * Gets the "length" property value of `object`.
+ *
+ * **Note:** This function is used to avoid a [JIT bug](https://bugs.webkit.org/show_bug.cgi?id=142792)
+ * that affects Safari on at least iOS 8.1-8.3 ARM64.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {*} Returns the "length" value.
+ */
+var getLength = baseProperty('length');
+
+module.exports = getLength;
+
+},{"./baseProperty":29}],38:[function(require,module,exports){
+var isNative = require('../lang/isNative');
+
+/**
+ * Gets the native function at `key` of `object`.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @param {string} key The key of the method to get.
+ * @returns {*} Returns the function if it's native, else `undefined`.
+ */
+function getNative(object, key) {
+  var value = object == null ? undefined : object[key];
+  return isNative(value) ? value : undefined;
+}
+
+module.exports = getNative;
+
+},{"../lang/isNative":53}],39:[function(require,module,exports){
+/**
+ * Gets the index at which the first occurrence of `NaN` is found in `array`.
+ *
+ * @private
+ * @param {Array} array The array to search.
+ * @param {number} fromIndex The index to search from.
+ * @param {boolean} [fromRight] Specify iterating from right to left.
+ * @returns {number} Returns the index of the matched `NaN`, else `-1`.
+ */
+function indexOfNaN(array, fromIndex, fromRight) {
+  var length = array.length,
+      index = fromIndex + (fromRight ? 0 : -1);
+
+  while ((fromRight ? index-- : ++index < length)) {
+    var other = array[index];
+    if (other !== other) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+module.exports = indexOfNaN;
+
+},{}],40:[function(require,module,exports){
+var getLength = require('./getLength'),
+    isLength = require('./isLength');
+
+/**
+ * Checks if `value` is array-like.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is array-like, else `false`.
+ */
+function isArrayLike(value) {
+  return value != null && isLength(getLength(value));
+}
+
+module.exports = isArrayLike;
+
+},{"./getLength":37,"./isLength":43}],41:[function(require,module,exports){
+/** Used to detect unsigned integer values. */
+var reIsUint = /^\d+$/;
+
+/**
+ * Used as the [maximum length](http://ecma-international.org/ecma-262/6.0/#sec-number.max_safe_integer)
+ * of an array-like value.
+ */
+var MAX_SAFE_INTEGER = 9007199254740991;
+
+/**
+ * Checks if `value` is a valid array-like index.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @param {number} [length=MAX_SAFE_INTEGER] The upper bounds of a valid index.
+ * @returns {boolean} Returns `true` if `value` is a valid index, else `false`.
+ */
+function isIndex(value, length) {
+  value = (typeof value == 'number' || reIsUint.test(value)) ? +value : -1;
+  length = length == null ? MAX_SAFE_INTEGER : length;
+  return value > -1 && value % 1 == 0 && value < length;
+}
+
+module.exports = isIndex;
+
+},{}],42:[function(require,module,exports){
+var isArrayLike = require('./isArrayLike'),
+    isIndex = require('./isIndex'),
+    isObject = require('../lang/isObject');
+
+/**
+ * Checks if the provided arguments are from an iteratee call.
+ *
+ * @private
+ * @param {*} value The potential iteratee value argument.
+ * @param {*} index The potential iteratee index or key argument.
+ * @param {*} object The potential iteratee object argument.
+ * @returns {boolean} Returns `true` if the arguments are from an iteratee call, else `false`.
+ */
+function isIterateeCall(value, index, object) {
+  if (!isObject(object)) {
+    return false;
+  }
+  var type = typeof index;
+  if (type == 'number'
+      ? (isArrayLike(object) && isIndex(index, object.length))
+      : (type == 'string' && index in object)) {
+    var other = object[index];
+    return value === value ? (value === other) : (other !== other);
+  }
+  return false;
+}
+
+module.exports = isIterateeCall;
+
+},{"../lang/isObject":54,"./isArrayLike":40,"./isIndex":41}],43:[function(require,module,exports){
+/**
+ * Used as the [maximum length](http://ecma-international.org/ecma-262/6.0/#sec-number.max_safe_integer)
+ * of an array-like value.
+ */
+var MAX_SAFE_INTEGER = 9007199254740991;
+
+/**
+ * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This function is based on [`ToLength`](http://ecma-international.org/ecma-262/6.0/#sec-tolength).
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a valid length, else `false`.
+ */
+function isLength(value) {
+  return typeof value == 'number' && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+}
+
+module.exports = isLength;
+
+},{}],44:[function(require,module,exports){
+/**
+ * Checks if `value` is object-like.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ */
+function isObjectLike(value) {
+  return !!value && typeof value == 'object';
+}
+
+module.exports = isObjectLike;
+
+},{}],45:[function(require,module,exports){
+/**
+ * Removes `key` and its value from the cache.
+ *
+ * @private
+ * @name delete
+ * @memberOf _.memoize.Cache
+ * @param {string} key The key of the value to remove.
+ * @returns {boolean} Returns `true` if the entry was removed successfully, else `false`.
+ */
+function mapDelete(key) {
+  return this.has(key) && delete this.__data__[key];
+}
+
+module.exports = mapDelete;
+
+},{}],46:[function(require,module,exports){
+/**
+ * Gets the cached value for `key`.
+ *
+ * @private
+ * @name get
+ * @memberOf _.memoize.Cache
+ * @param {string} key The key of the value to get.
+ * @returns {*} Returns the cached value.
+ */
+function mapGet(key) {
+  return key == '__proto__' ? undefined : this.__data__[key];
+}
+
+module.exports = mapGet;
+
+},{}],47:[function(require,module,exports){
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Checks if a cached value for `key` exists.
+ *
+ * @private
+ * @name has
+ * @memberOf _.memoize.Cache
+ * @param {string} key The key of the entry to check.
+ * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
+ */
+function mapHas(key) {
+  return key != '__proto__' && hasOwnProperty.call(this.__data__, key);
+}
+
+module.exports = mapHas;
+
+},{}],48:[function(require,module,exports){
+/**
+ * Sets `value` to `key` of the cache.
+ *
+ * @private
+ * @name set
+ * @memberOf _.memoize.Cache
+ * @param {string} key The key of the value to cache.
+ * @param {*} value The value to cache.
+ * @returns {Object} Returns the cache object.
+ */
+function mapSet(key, value) {
+  if (key != '__proto__') {
+    this.__data__[key] = value;
+  }
+  return this;
+}
+
+module.exports = mapSet;
+
+},{}],49:[function(require,module,exports){
+var isArguments = require('../lang/isArguments'),
+    isArray = require('../lang/isArray'),
+    isIndex = require('./isIndex'),
+    isLength = require('./isLength'),
+    keysIn = require('../object/keysIn');
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * A fallback implementation of `Object.keys` which creates an array of the
+ * own enumerable property names of `object`.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the array of property names.
+ */
+function shimKeys(object) {
+  var props = keysIn(object),
+      propsLength = props.length,
+      length = propsLength && object.length;
+
+  var allowIndexes = !!length && isLength(length) &&
+    (isArray(object) || isArguments(object));
+
+  var index = -1,
+      result = [];
+
+  while (++index < propsLength) {
+    var key = props[index];
+    if ((allowIndexes && isIndex(key, length)) || hasOwnProperty.call(object, key)) {
+      result.push(key);
+    }
+  }
+  return result;
+}
+
+module.exports = shimKeys;
+
+},{"../lang/isArguments":50,"../lang/isArray":51,"../object/keysIn":58,"./isIndex":41,"./isLength":43}],50:[function(require,module,exports){
+var isArrayLike = require('../internal/isArrayLike'),
+    isObjectLike = require('../internal/isObjectLike');
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/** Native method references. */
+var propertyIsEnumerable = objectProto.propertyIsEnumerable;
+
+/**
+ * Checks if `value` is classified as an `arguments` object.
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is correctly classified, else `false`.
+ * @example
+ *
+ * _.isArguments(function() { return arguments; }());
+ * // => true
+ *
+ * _.isArguments([1, 2, 3]);
+ * // => false
+ */
+function isArguments(value) {
+  return isObjectLike(value) && isArrayLike(value) &&
+    hasOwnProperty.call(value, 'callee') && !propertyIsEnumerable.call(value, 'callee');
+}
+
+module.exports = isArguments;
+
+},{"../internal/isArrayLike":40,"../internal/isObjectLike":44}],51:[function(require,module,exports){
+var getNative = require('../internal/getNative'),
+    isLength = require('../internal/isLength'),
+    isObjectLike = require('../internal/isObjectLike');
+
+/** `Object#toString` result references. */
+var arrayTag = '[object Array]';
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the [`toStringTag`](http://ecma-international.org/ecma-262/6.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objToString = objectProto.toString;
+
+/* Native method references for those with the same name as other `lodash` methods. */
+var nativeIsArray = getNative(Array, 'isArray');
+
+/**
+ * Checks if `value` is classified as an `Array` object.
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is correctly classified, else `false`.
+ * @example
+ *
+ * _.isArray([1, 2, 3]);
+ * // => true
+ *
+ * _.isArray(function() { return arguments; }());
+ * // => false
+ */
+var isArray = nativeIsArray || function(value) {
+  return isObjectLike(value) && isLength(value.length) && objToString.call(value) == arrayTag;
+};
+
+module.exports = isArray;
+
+},{"../internal/getNative":38,"../internal/isLength":43,"../internal/isObjectLike":44}],52:[function(require,module,exports){
+var isObject = require('./isObject');
+
+/** `Object#toString` result references. */
+var funcTag = '[object Function]';
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the [`toStringTag`](http://ecma-international.org/ecma-262/6.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objToString = objectProto.toString;
+
+/**
+ * Checks if `value` is classified as a `Function` object.
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is correctly classified, else `false`.
+ * @example
+ *
+ * _.isFunction(_);
+ * // => true
+ *
+ * _.isFunction(/abc/);
+ * // => false
+ */
+function isFunction(value) {
+  // The use of `Object#toString` avoids issues with the `typeof` operator
+  // in older versions of Chrome and Safari which return 'function' for regexes
+  // and Safari 8 which returns 'object' for typed array constructors.
+  return isObject(value) && objToString.call(value) == funcTag;
+}
+
+module.exports = isFunction;
+
+},{"./isObject":54}],53:[function(require,module,exports){
+var isFunction = require('./isFunction'),
+    isObjectLike = require('../internal/isObjectLike');
+
+/** Used to detect host constructors (Safari > 5). */
+var reIsHostCtor = /^\[object .+?Constructor\]$/;
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/** Used to resolve the decompiled source of functions. */
+var fnToString = Function.prototype.toString;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/** Used to detect if a method is native. */
+var reIsNative = RegExp('^' +
+  fnToString.call(hasOwnProperty).replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')
+  .replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, '$1.*?') + '$'
+);
+
+/**
+ * Checks if `value` is a native function.
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a native function, else `false`.
+ * @example
+ *
+ * _.isNative(Array.prototype.push);
+ * // => true
+ *
+ * _.isNative(_);
+ * // => false
+ */
+function isNative(value) {
+  if (value == null) {
+    return false;
+  }
+  if (isFunction(value)) {
+    return reIsNative.test(fnToString.call(value));
+  }
+  return isObjectLike(value) && reIsHostCtor.test(value);
+}
+
+module.exports = isNative;
+
+},{"../internal/isObjectLike":44,"./isFunction":52}],54:[function(require,module,exports){
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+module.exports = isObject;
+
+},{}],55:[function(require,module,exports){
+var assignWith = require('../internal/assignWith'),
+    baseAssign = require('../internal/baseAssign'),
+    createAssigner = require('../internal/createAssigner');
+
+/**
+ * Assigns own enumerable properties of source object(s) to the destination
+ * object. Subsequent sources overwrite property assignments of previous sources.
+ * If `customizer` is provided it's invoked to produce the assigned values.
+ * The `customizer` is bound to `thisArg` and invoked with five arguments:
+ * (objectValue, sourceValue, key, object, source).
+ *
+ * **Note:** This method mutates `object` and is based on
+ * [`Object.assign`](http://ecma-international.org/ecma-262/6.0/#sec-object.assign).
+ *
+ * @static
+ * @memberOf _
+ * @alias extend
+ * @category Object
+ * @param {Object} object The destination object.
+ * @param {...Object} [sources] The source objects.
+ * @param {Function} [customizer] The function to customize assigned values.
+ * @param {*} [thisArg] The `this` binding of `customizer`.
+ * @returns {Object} Returns `object`.
+ * @example
+ *
+ * _.assign({ 'user': 'barney' }, { 'age': 40 }, { 'user': 'fred' });
+ * // => { 'user': 'fred', 'age': 40 }
+ *
+ * // using a customizer callback
+ * var defaults = _.partialRight(_.assign, function(value, other) {
+ *   return _.isUndefined(value) ? other : value;
+ * });
+ *
+ * defaults({ 'user': 'barney' }, { 'age': 36 }, { 'user': 'fred' });
+ * // => { 'user': 'barney', 'age': 36 }
+ */
+var assign = createAssigner(function(object, source, customizer) {
+  return customizer
+    ? assignWith(object, source, customizer)
+    : baseAssign(object, source);
+});
+
+module.exports = assign;
+
+},{"../internal/assignWith":23,"../internal/baseAssign":24,"../internal/createAssigner":34}],56:[function(require,module,exports){
+var assign = require('./assign'),
+    assignDefaults = require('../internal/assignDefaults'),
+    createDefaults = require('../internal/createDefaults');
+
+/**
+ * Assigns own enumerable properties of source object(s) to the destination
+ * object for all destination properties that resolve to `undefined`. Once a
+ * property is set, additional values of the same property are ignored.
+ *
+ * **Note:** This method mutates `object`.
+ *
+ * @static
+ * @memberOf _
+ * @category Object
+ * @param {Object} object The destination object.
+ * @param {...Object} [sources] The source objects.
+ * @returns {Object} Returns `object`.
+ * @example
+ *
+ * _.defaults({ 'user': 'barney' }, { 'age': 36 }, { 'user': 'fred' });
+ * // => { 'user': 'barney', 'age': 36 }
+ */
+var defaults = createDefaults(assign, assignDefaults);
+
+module.exports = defaults;
+
+},{"../internal/assignDefaults":22,"../internal/createDefaults":36,"./assign":55}],57:[function(require,module,exports){
+var getNative = require('../internal/getNative'),
+    isArrayLike = require('../internal/isArrayLike'),
+    isObject = require('../lang/isObject'),
+    shimKeys = require('../internal/shimKeys');
+
+/* Native method references for those with the same name as other `lodash` methods. */
+var nativeKeys = getNative(Object, 'keys');
+
+/**
+ * Creates an array of the own enumerable property names of `object`.
+ *
+ * **Note:** Non-object values are coerced to objects. See the
+ * [ES spec](http://ecma-international.org/ecma-262/6.0/#sec-object.keys)
+ * for more details.
+ *
+ * @static
+ * @memberOf _
+ * @category Object
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the array of property names.
+ * @example
+ *
+ * function Foo() {
+ *   this.a = 1;
+ *   this.b = 2;
+ * }
+ *
+ * Foo.prototype.c = 3;
+ *
+ * _.keys(new Foo);
+ * // => ['a', 'b'] (iteration order is not guaranteed)
+ *
+ * _.keys('hi');
+ * // => ['0', '1']
+ */
+var keys = !nativeKeys ? shimKeys : function(object) {
+  var Ctor = object == null ? undefined : object.constructor;
+  if ((typeof Ctor == 'function' && Ctor.prototype === object) ||
+      (typeof object != 'function' && isArrayLike(object))) {
+    return shimKeys(object);
+  }
+  return isObject(object) ? nativeKeys(object) : [];
+};
+
+module.exports = keys;
+
+},{"../internal/getNative":38,"../internal/isArrayLike":40,"../internal/shimKeys":49,"../lang/isObject":54}],58:[function(require,module,exports){
+var isArguments = require('../lang/isArguments'),
+    isArray = require('../lang/isArray'),
+    isIndex = require('../internal/isIndex'),
+    isLength = require('../internal/isLength'),
+    isObject = require('../lang/isObject');
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Creates an array of the own and inherited enumerable property names of `object`.
+ *
+ * **Note:** Non-object values are coerced to objects.
+ *
+ * @static
+ * @memberOf _
+ * @category Object
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the array of property names.
+ * @example
+ *
+ * function Foo() {
+ *   this.a = 1;
+ *   this.b = 2;
+ * }
+ *
+ * Foo.prototype.c = 3;
+ *
+ * _.keysIn(new Foo);
+ * // => ['a', 'b', 'c'] (iteration order is not guaranteed)
+ */
+function keysIn(object) {
+  if (object == null) {
+    return [];
+  }
+  if (!isObject(object)) {
+    object = Object(object);
+  }
+  var length = object.length;
+  length = (length && isLength(length) &&
+    (isArray(object) || isArguments(object)) && length) || 0;
+
+  var Ctor = object.constructor,
+      index = -1,
+      isProto = typeof Ctor == 'function' && Ctor.prototype === object,
+      result = Array(length),
+      skipIndexes = length > 0;
+
+  while (++index < length) {
+    result[index] = (index + '');
+  }
+  for (var key in object) {
+    if (!(skipIndexes && isIndex(key, length)) &&
+        !(key == 'constructor' && (isProto || !hasOwnProperty.call(object, key)))) {
+      result.push(key);
+    }
+  }
+  return result;
+}
+
+module.exports = keysIn;
+
+},{"../internal/isIndex":41,"../internal/isLength":43,"../lang/isArguments":50,"../lang/isArray":51,"../lang/isObject":54}],59:[function(require,module,exports){
+/**
+ * This method returns the first argument provided to it.
+ *
+ * @static
+ * @memberOf _
+ * @category Utility
+ * @param {*} value Any value.
+ * @returns {*} Returns `value`.
+ * @example
+ *
+ * var object = { 'user': 'fred' };
+ *
+ * _.identity(object) === object;
+ * // => true
+ */
+function identity(value) {
+  return value;
+}
+
+module.exports = identity;
+
+},{}],60:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _slice = Array.prototype.slice;
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+exports['default'] = DragDropContext;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _dndCore = require('dnd-core');
+
+var _invariant = require('invariant');
+
+var _invariant2 = _interopRequireDefault(_invariant);
+
+var _utilsCheckDecoratorArguments = require('./utils/checkDecoratorArguments');
+
+var _utilsCheckDecoratorArguments2 = _interopRequireDefault(_utilsCheckDecoratorArguments);
+
+function DragDropContext(backendOrModule) {
+  _utilsCheckDecoratorArguments2['default'].apply(undefined, ['DragDropContext', 'backend'].concat(_slice.call(arguments)));
+
+  // Auto-detect ES6 default export for people still using ES5
+  var backend = undefined;
+  if (typeof backendOrModule === 'object' && typeof backendOrModule['default'] === 'function') {
+    backend = backendOrModule['default'];
+  } else {
+    backend = backendOrModule;
+  }
+
+  _invariant2['default'](typeof backend === 'function', 'Expected the backend to be a function or an ES6 module exporting a default function. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drag-drop-context.html');
+
+  var childContext = {
+    dragDropManager: new _dndCore.DragDropManager(backend)
+  };
+
+  return function decorateContext(DecoratedComponent) {
+    var displayName = DecoratedComponent.displayName || DecoratedComponent.name || 'Component';
+
+    return (function (_Component) {
+      _inherits(DragDropContextContainer, _Component);
+
+      function DragDropContextContainer() {
+        _classCallCheck(this, DragDropContextContainer);
+
+        _Component.apply(this, arguments);
+      }
+
+      DragDropContextContainer.prototype.getDecoratedComponentInstance = function getDecoratedComponentInstance() {
+        return this.refs.child;
+      };
+
+      DragDropContextContainer.prototype.getManager = function getManager() {
+        return childContext.dragDropManager;
+      };
+
+      DragDropContextContainer.prototype.getChildContext = function getChildContext() {
+        return childContext;
+      };
+
+      DragDropContextContainer.prototype.render = function render() {
+        return _react2['default'].createElement(DecoratedComponent, _extends({}, this.props, {
+          ref: 'child' }));
+      };
+
+      _createClass(DragDropContextContainer, null, [{
+        key: 'DecoratedComponent',
+        value: DecoratedComponent,
+        enumerable: true
+      }, {
+        key: 'displayName',
+        value: 'DragDropContext(' + displayName + ')',
+        enumerable: true
+      }, {
+        key: 'childContextTypes',
+        value: {
+          dragDropManager: _react.PropTypes.object.isRequired
+        },
+        enumerable: true
+      }]);
+
+      return DragDropContextContainer;
+    })(_react.Component);
+  };
+}
+
+module.exports = exports['default'];
+},{"./utils/checkDecoratorArguments":76,"dnd-core":94,"invariant":104,"react":292}],61:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _slice = Array.prototype.slice;
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+exports['default'] = DragLayer;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _utilsShallowEqual = require('./utils/shallowEqual');
+
+var _utilsShallowEqual2 = _interopRequireDefault(_utilsShallowEqual);
+
+var _utilsShallowEqualScalar = require('./utils/shallowEqualScalar');
+
+var _utilsShallowEqualScalar2 = _interopRequireDefault(_utilsShallowEqualScalar);
+
+var _lodashLangIsPlainObject = require('lodash/lang/isPlainObject');
+
+var _lodashLangIsPlainObject2 = _interopRequireDefault(_lodashLangIsPlainObject);
+
+var _invariant = require('invariant');
+
+var _invariant2 = _interopRequireDefault(_invariant);
+
+var _utilsCheckDecoratorArguments = require('./utils/checkDecoratorArguments');
+
+var _utilsCheckDecoratorArguments2 = _interopRequireDefault(_utilsCheckDecoratorArguments);
+
+function DragLayer(collect) {
+  var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+  _utilsCheckDecoratorArguments2['default'].apply(undefined, ['DragLayer', 'collect[, options]'].concat(_slice.call(arguments)));
+  _invariant2['default'](typeof collect === 'function', 'Expected "collect" provided as the first argument to DragLayer ' + 'to be a function that collects props to inject into the component. ', 'Instead, received %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drag-layer.html', collect);
+  _invariant2['default'](_lodashLangIsPlainObject2['default'](options), 'Expected "options" provided as the second argument to DragLayer to be ' + 'a plain object when specified. ' + 'Instead, received %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drag-layer.html', options);
+
+  return function decorateLayer(DecoratedComponent) {
+    var _options$arePropsEqual = options.arePropsEqual;
+    var arePropsEqual = _options$arePropsEqual === undefined ? _utilsShallowEqualScalar2['default'] : _options$arePropsEqual;
+
+    var displayName = DecoratedComponent.displayName || DecoratedComponent.name || 'Component';
+
+    return (function (_Component) {
+      _inherits(DragLayerContainer, _Component);
+
+      DragLayerContainer.prototype.getDecoratedComponentInstance = function getDecoratedComponentInstance() {
+        return this.refs.child;
+      };
+
+      DragLayerContainer.prototype.shouldComponentUpdate = function shouldComponentUpdate(nextProps, nextState) {
+        return !arePropsEqual(nextProps, this.props) || !_utilsShallowEqual2['default'](nextState, this.state);
+      };
+
+      _createClass(DragLayerContainer, null, [{
+        key: 'DecoratedComponent',
+        value: DecoratedComponent,
+        enumerable: true
+      }, {
+        key: 'displayName',
+        value: 'DragLayer(' + displayName + ')',
+        enumerable: true
+      }, {
+        key: 'contextTypes',
+        value: {
+          dragDropManager: _react.PropTypes.object.isRequired
+        },
+        enumerable: true
+      }]);
+
+      function DragLayerContainer(props, context) {
+        _classCallCheck(this, DragLayerContainer);
+
+        _Component.call(this, props);
+        this.handleChange = this.handleChange.bind(this);
+
+        this.manager = context.dragDropManager;
+        _invariant2['default'](typeof this.manager === 'object', 'Could not find the drag and drop manager in the context of %s. ' + 'Make sure to wrap the top-level component of your app with DragDropContext. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-troubleshooting.html#could-not-find-the-drag-and-drop-manager-in-the-context', displayName, displayName);
+
+        this.state = this.getCurrentState();
+      }
+
+      DragLayerContainer.prototype.componentDidMount = function componentDidMount() {
+        var monitor = this.manager.getMonitor();
+        this.unsubscribe = monitor.subscribeToOffsetChange(this.handleChange);
+      };
+
+      DragLayerContainer.prototype.componentWillUnmount = function componentWillUnmount() {
+        this.unsubscribe();
+      };
+
+      DragLayerContainer.prototype.handleChange = function handleChange() {
+        var nextState = this.getCurrentState();
+        if (!_utilsShallowEqual2['default'](nextState, this.state)) {
+          this.setState(nextState);
+        }
+      };
+
+      DragLayerContainer.prototype.getCurrentState = function getCurrentState() {
+        var monitor = this.manager.getMonitor();
+        return collect(monitor);
+      };
+
+      DragLayerContainer.prototype.render = function render() {
+        return _react2['default'].createElement(DecoratedComponent, _extends({}, this.props, this.state, {
+          ref: 'child' }));
+      };
+
+      return DragLayerContainer;
+    })(_react.Component);
+  };
+}
+
+module.exports = exports['default'];
+},{"./utils/checkDecoratorArguments":76,"./utils/shallowEqual":79,"./utils/shallowEqualScalar":80,"invariant":104,"lodash/lang/isPlainObject":134,"react":292}],62:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+var _slice = Array.prototype.slice;
+exports['default'] = DragSource;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _invariant = require('invariant');
+
+var _invariant2 = _interopRequireDefault(_invariant);
+
+var _lodashLangIsPlainObject = require('lodash/lang/isPlainObject');
+
+var _lodashLangIsPlainObject2 = _interopRequireDefault(_lodashLangIsPlainObject);
+
+var _utilsCheckDecoratorArguments = require('./utils/checkDecoratorArguments');
+
+var _utilsCheckDecoratorArguments2 = _interopRequireDefault(_utilsCheckDecoratorArguments);
+
+var _decorateHandler = require('./decorateHandler');
+
+var _decorateHandler2 = _interopRequireDefault(_decorateHandler);
+
+var _registerSource = require('./registerSource');
+
+var _registerSource2 = _interopRequireDefault(_registerSource);
+
+var _createSourceFactory = require('./createSourceFactory');
+
+var _createSourceFactory2 = _interopRequireDefault(_createSourceFactory);
+
+var _createSourceMonitor = require('./createSourceMonitor');
+
+var _createSourceMonitor2 = _interopRequireDefault(_createSourceMonitor);
+
+var _createSourceConnector = require('./createSourceConnector');
+
+var _createSourceConnector2 = _interopRequireDefault(_createSourceConnector);
+
+var _utilsIsValidType = require('./utils/isValidType');
+
+var _utilsIsValidType2 = _interopRequireDefault(_utilsIsValidType);
+
+function DragSource(type, spec, collect) {
+  var options = arguments.length <= 3 || arguments[3] === undefined ? {} : arguments[3];
+
+  _utilsCheckDecoratorArguments2['default'].apply(undefined, ['DragSource', 'type, spec, collect[, options]'].concat(_slice.call(arguments)));
+  var getType = type;
+  if (typeof type !== 'function') {
+    _invariant2['default'](_utilsIsValidType2['default'](type), 'Expected "type" provided as the first argument to DragSource to be ' + 'a string, or a function that returns a string given the current props. ' + 'Instead, received %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drag-source.html', type);
+    getType = function () {
+      return type;
+    };
+  }
+  _invariant2['default'](_lodashLangIsPlainObject2['default'](spec), 'Expected "spec" provided as the second argument to DragSource to be ' + 'a plain object. Instead, received %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drag-source.html', spec);
+  var createSource = _createSourceFactory2['default'](spec);
+  _invariant2['default'](typeof collect === 'function', 'Expected "collect" provided as the third argument to DragSource to be ' + 'a function that returns a plain object of props to inject. ' + 'Instead, received %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drag-source.html', collect);
+  _invariant2['default'](_lodashLangIsPlainObject2['default'](options), 'Expected "options" provided as the fourth argument to DragSource to be ' + 'a plain object when specified. ' + 'Instead, received %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drag-source.html', collect);
+
+  return function decorateSource(DecoratedComponent) {
+    return _decorateHandler2['default']({
+      connectBackend: function connectBackend(backend, sourceId) {
+        return backend.connectDragSource(sourceId);
+      },
+      containerDisplayName: 'DragSource',
+      createHandler: createSource,
+      registerHandler: _registerSource2['default'],
+      createMonitor: _createSourceMonitor2['default'],
+      createConnector: _createSourceConnector2['default'],
+      DecoratedComponent: DecoratedComponent,
+      getType: getType,
+      collect: collect,
+      options: options
+    });
+  };
+}
+
+module.exports = exports['default'];
+},{"./createSourceConnector":66,"./createSourceFactory":67,"./createSourceMonitor":68,"./decorateHandler":72,"./registerSource":74,"./utils/checkDecoratorArguments":76,"./utils/isValidType":78,"invariant":104,"lodash/lang/isPlainObject":134}],63:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+var _slice = Array.prototype.slice;
+exports['default'] = DropTarget;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _invariant = require('invariant');
+
+var _invariant2 = _interopRequireDefault(_invariant);
+
+var _lodashLangIsPlainObject = require('lodash/lang/isPlainObject');
+
+var _lodashLangIsPlainObject2 = _interopRequireDefault(_lodashLangIsPlainObject);
+
+var _utilsCheckDecoratorArguments = require('./utils/checkDecoratorArguments');
+
+var _utilsCheckDecoratorArguments2 = _interopRequireDefault(_utilsCheckDecoratorArguments);
+
+var _decorateHandler = require('./decorateHandler');
+
+var _decorateHandler2 = _interopRequireDefault(_decorateHandler);
+
+var _registerTarget = require('./registerTarget');
+
+var _registerTarget2 = _interopRequireDefault(_registerTarget);
+
+var _createTargetFactory = require('./createTargetFactory');
+
+var _createTargetFactory2 = _interopRequireDefault(_createTargetFactory);
+
+var _createTargetMonitor = require('./createTargetMonitor');
+
+var _createTargetMonitor2 = _interopRequireDefault(_createTargetMonitor);
+
+var _createTargetConnector = require('./createTargetConnector');
+
+var _createTargetConnector2 = _interopRequireDefault(_createTargetConnector);
+
+var _utilsIsValidType = require('./utils/isValidType');
+
+var _utilsIsValidType2 = _interopRequireDefault(_utilsIsValidType);
+
+function DropTarget(type, spec, collect) {
+  var options = arguments.length <= 3 || arguments[3] === undefined ? {} : arguments[3];
+
+  _utilsCheckDecoratorArguments2['default'].apply(undefined, ['DropTarget', 'type, spec, collect[, options]'].concat(_slice.call(arguments)));
+  var getType = type;
+  if (typeof type !== 'function') {
+    _invariant2['default'](_utilsIsValidType2['default'](type, true), 'Expected "type" provided as the first argument to DropTarget to be ' + 'a string, an array of strings, or a function that returns either given ' + 'the current props. Instead, received %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drop-target.html', type);
+    getType = function () {
+      return type;
+    };
+  }
+  _invariant2['default'](_lodashLangIsPlainObject2['default'](spec), 'Expected "spec" provided as the second argument to DropTarget to be ' + 'a plain object. Instead, received %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drop-target.html', spec);
+  var createTarget = _createTargetFactory2['default'](spec);
+  _invariant2['default'](typeof collect === 'function', 'Expected "collect" provided as the third argument to DropTarget to be ' + 'a function that returns a plain object of props to inject. ' + 'Instead, received %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drop-target.html', collect);
+  _invariant2['default'](_lodashLangIsPlainObject2['default'](options), 'Expected "options" provided as the fourth argument to DropTarget to be ' + 'a plain object when specified. ' + 'Instead, received %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drop-target.html', collect);
+
+  return function decorateTarget(DecoratedComponent) {
+    return _decorateHandler2['default']({
+      connectBackend: function connectBackend(backend, targetId) {
+        return backend.connectDropTarget(targetId);
+      },
+      containerDisplayName: 'DropTarget',
+      createHandler: createTarget,
+      registerHandler: _registerTarget2['default'],
+      createMonitor: _createTargetMonitor2['default'],
+      createConnector: _createTargetConnector2['default'],
+      DecoratedComponent: DecoratedComponent,
+      getType: getType,
+      collect: collect,
+      options: options
+    });
+  };
+}
+
+module.exports = exports['default'];
+},{"./createTargetConnector":69,"./createTargetFactory":70,"./createTargetMonitor":71,"./decorateHandler":72,"./registerTarget":75,"./utils/checkDecoratorArguments":76,"./utils/isValidType":78,"invariant":104,"lodash/lang/isPlainObject":134}],64:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = bindConnector;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _bindConnectorMethod2 = require('./bindConnectorMethod');
+
+var _bindConnectorMethod3 = _interopRequireDefault(_bindConnectorMethod2);
+
+var _disposables = require('disposables');
+
+function bindConnector(connector, handlerId) {
+  var compositeDisposable = new _disposables.CompositeDisposable();
+  var handlerConnector = {};
+
+  Object.keys(connector).forEach(function (key) {
+    var _bindConnectorMethod = _bindConnectorMethod3['default'](handlerId, connector[key]);
+
+    var disposable = _bindConnectorMethod.disposable;
+    var ref = _bindConnectorMethod.ref;
+
+    compositeDisposable.add(disposable);
+    handlerConnector[key] = function () {
+      return ref;
+    };
+  });
+
+  return {
+    disposable: compositeDisposable,
+    handlerConnector: handlerConnector
+  };
+}
+
+module.exports = exports['default'];
+},{"./bindConnectorMethod":65,"disposables":84}],65:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = bindConnectorMethod;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _utilsShallowEqual = require('./utils/shallowEqual');
+
+var _utilsShallowEqual2 = _interopRequireDefault(_utilsShallowEqual);
+
+var _utilsCloneWithRef = require('./utils/cloneWithRef');
+
+var _utilsCloneWithRef2 = _interopRequireDefault(_utilsCloneWithRef);
+
+var _disposables = require('disposables');
+
+var _react = require('react');
+
+function areOptionsEqual(currentOptions, nextOptions) {
+  if (currentOptions === nextOptions) {
+    return true;
+  }
+
+  return currentOptions !== null && nextOptions !== null && _utilsShallowEqual2['default'](currentOptions, nextOptions);
+}
+
+function bindConnectorMethod(handlerId, connect) {
+  var disposable = new _disposables.SerialDisposable();
+
+  var currentNode = null;
+  var currentOptions = null;
+
+  function ref() {
+    var nextWhatever = arguments.length <= 0 || arguments[0] === undefined ? null : arguments[0];
+    var nextOptions = arguments.length <= 1 || arguments[1] === undefined ? null : arguments[1];
+
+    // If passed a ReactElement, clone it and attach this function as a ref.
+    // This helps us achieve a neat API where user doesn't even know that refs
+    // are being used under the hood.
+    if (_react.isValidElement(nextWhatever)) {
+      // Custom components can no longer be wrapped directly in React DnD 2.0
+      // so that we don't need to depend on findDOMNode() from react-dom.
+      if (typeof nextWhatever.type !== 'string') {
+        var displayName = nextWhatever.type.displayName || nextWhatever.type.name || 'the component';
+        throw new Error('Only native element nodes can now be passed to ' + connect.name + '(). ' + ('You can either wrap ' + displayName + ' into a <div>, or turn it into a ') + 'drag source or a drop target itself.');
+      }
+
+      var nextElement = nextWhatever;
+      return _utilsCloneWithRef2['default'](nextElement, function (inst) {
+        return ref(inst, nextOptions);
+      });
+    }
+
+    // At this point we can only receive DOM nodes.
+    var nextNode = nextWhatever;
+
+    // If nothing changed, bail out of re-connecting the node to the backend.
+    if (nextNode === currentNode && areOptionsEqual(currentOptions, nextOptions)) {
+      return;
+    }
+
+    currentNode = nextNode;
+    currentOptions = nextOptions;
+
+    if (!nextNode) {
+      disposable.setDisposable(null);
+      return;
+    }
+
+    // Re-connect the node to the backend.
+    var currentDispose = connect(handlerId, nextNode, nextOptions);
+    disposable.setDisposable(new _disposables.Disposable(currentDispose));
+  }
+
+  return {
+    ref: ref,
+    disposable: disposable
+  };
+}
+
+module.exports = exports['default'];
+},{"./utils/cloneWithRef":77,"./utils/shallowEqual":79,"disposables":84,"react":292}],66:[function(require,module,exports){
+"use strict";
+
+exports.__esModule = true;
+exports["default"] = createSourceConnector;
+
+function createSourceConnector(backend) {
+  return {
+    dragSource: function connectDragSource() {
+      return backend.connectDragSource.apply(backend, arguments);
+    },
+    dragPreview: function connectDragPreview() {
+      return backend.connectDragPreview.apply(backend, arguments);
+    }
+  };
+}
+
+module.exports = exports["default"];
+},{}],67:[function(require,module,exports){
+(function (process){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = createSourceFactory;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+var _invariant = require('invariant');
+
+var _invariant2 = _interopRequireDefault(_invariant);
+
+var _lodashLangIsPlainObject = require('lodash/lang/isPlainObject');
+
+var _lodashLangIsPlainObject2 = _interopRequireDefault(_lodashLangIsPlainObject);
+
+var ALLOWED_SPEC_METHODS = ['canDrag', 'beginDrag', 'canDrag', 'isDragging', 'endDrag'];
+var REQUIRED_SPEC_METHODS = ['beginDrag'];
+
+function createSourceFactory(spec) {
+  Object.keys(spec).forEach(function (key) {
+    _invariant2['default'](ALLOWED_SPEC_METHODS.indexOf(key) > -1, 'Expected the drag source specification to only have ' + 'some of the following keys: %s. ' + 'Instead received a specification with an unexpected "%s" key. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drag-source.html', ALLOWED_SPEC_METHODS.join(', '), key);
+    _invariant2['default'](typeof spec[key] === 'function', 'Expected %s in the drag source specification to be a function. ' + 'Instead received a specification with %s: %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drag-source.html', key, key, spec[key]);
+  });
+  REQUIRED_SPEC_METHODS.forEach(function (key) {
+    _invariant2['default'](typeof spec[key] === 'function', 'Expected %s in the drag source specification to be a function. ' + 'Instead received a specification with %s: %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drag-source.html', key, key, spec[key]);
+  });
+
+  var Source = (function () {
+    function Source(monitor) {
+      _classCallCheck(this, Source);
+
+      this.monitor = monitor;
+      this.props = null;
+      this.component = null;
+    }
+
+    Source.prototype.receiveProps = function receiveProps(props) {
+      this.props = props;
+    };
+
+    Source.prototype.receiveComponent = function receiveComponent(component) {
+      this.component = component;
+    };
+
+    Source.prototype.canDrag = function canDrag() {
+      if (!spec.canDrag) {
+        return true;
+      }
+
+      return spec.canDrag(this.props, this.monitor);
+    };
+
+    Source.prototype.isDragging = function isDragging(globalMonitor, sourceId) {
+      if (!spec.isDragging) {
+        return sourceId === globalMonitor.getSourceId();
+      }
+
+      return spec.isDragging(this.props, this.monitor);
+    };
+
+    Source.prototype.beginDrag = function beginDrag() {
+      var item = spec.beginDrag(this.props, this.monitor, this.component);
+      if (process.env.NODE_ENV !== 'production') {
+        _invariant2['default'](_lodashLangIsPlainObject2['default'](item), 'beginDrag() must return a plain object that represents the dragged item. ' + 'Instead received %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drag-source.html', item);
+      }
+      return item;
+    };
+
+    Source.prototype.endDrag = function endDrag() {
+      if (!spec.endDrag) {
+        return;
+      }
+
+      spec.endDrag(this.props, this.monitor, this.component);
+    };
+
+    return Source;
+  })();
+
+  return function createSource(monitor) {
+    return new Source(monitor);
+  };
+}
+
+module.exports = exports['default'];
+}).call(this,require("oMfpAn"))
+},{"invariant":104,"lodash/lang/isPlainObject":134,"oMfpAn":2}],68:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = createSourceMonitor;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+var _invariant = require('invariant');
+
+var _invariant2 = _interopRequireDefault(_invariant);
+
+var isCallingCanDrag = false;
+var isCallingIsDragging = false;
+
+var SourceMonitor = (function () {
+  function SourceMonitor(manager) {
+    _classCallCheck(this, SourceMonitor);
+
+    this.internalMonitor = manager.getMonitor();
+  }
+
+  SourceMonitor.prototype.receiveHandlerId = function receiveHandlerId(sourceId) {
+    this.sourceId = sourceId;
+  };
+
+  SourceMonitor.prototype.canDrag = function canDrag() {
+    _invariant2['default'](!isCallingCanDrag, 'You may not call monitor.canDrag() inside your canDrag() implementation. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drag-source-monitor.html');
+
+    try {
+      isCallingCanDrag = true;
+      return this.internalMonitor.canDragSource(this.sourceId);
+    } finally {
+      isCallingCanDrag = false;
+    }
+  };
+
+  SourceMonitor.prototype.isDragging = function isDragging() {
+    _invariant2['default'](!isCallingIsDragging, 'You may not call monitor.isDragging() inside your isDragging() implementation. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drag-source-monitor.html');
+
+    try {
+      isCallingIsDragging = true;
+      return this.internalMonitor.isDraggingSource(this.sourceId);
+    } finally {
+      isCallingIsDragging = false;
+    }
+  };
+
+  SourceMonitor.prototype.getItemType = function getItemType() {
+    return this.internalMonitor.getItemType();
+  };
+
+  SourceMonitor.prototype.getItem = function getItem() {
+    return this.internalMonitor.getItem();
+  };
+
+  SourceMonitor.prototype.getDropResult = function getDropResult() {
+    return this.internalMonitor.getDropResult();
+  };
+
+  SourceMonitor.prototype.didDrop = function didDrop() {
+    return this.internalMonitor.didDrop();
+  };
+
+  SourceMonitor.prototype.getInitialClientOffset = function getInitialClientOffset() {
+    return this.internalMonitor.getInitialClientOffset();
+  };
+
+  SourceMonitor.prototype.getInitialSourceClientOffset = function getInitialSourceClientOffset() {
+    return this.internalMonitor.getInitialSourceClientOffset();
+  };
+
+  SourceMonitor.prototype.getSourceClientOffset = function getSourceClientOffset() {
+    return this.internalMonitor.getSourceClientOffset();
+  };
+
+  SourceMonitor.prototype.getClientOffset = function getClientOffset() {
+    return this.internalMonitor.getClientOffset();
+  };
+
+  SourceMonitor.prototype.getDifferenceFromInitialOffset = function getDifferenceFromInitialOffset() {
+    return this.internalMonitor.getDifferenceFromInitialOffset();
+  };
+
+  return SourceMonitor;
+})();
+
+function createSourceMonitor(manager) {
+  return new SourceMonitor(manager);
+}
+
+module.exports = exports['default'];
+},{"invariant":104}],69:[function(require,module,exports){
+"use strict";
+
+exports.__esModule = true;
+exports["default"] = createTargetConnector;
+
+function createTargetConnector(backend) {
+  return {
+    dropTarget: function connectDropTarget() {
+      return backend.connectDropTarget.apply(backend, arguments);
+    }
+  };
+}
+
+module.exports = exports["default"];
+},{}],70:[function(require,module,exports){
+(function (process){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = createTargetFactory;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+var _invariant = require('invariant');
+
+var _invariant2 = _interopRequireDefault(_invariant);
+
+var _lodashLangIsPlainObject = require('lodash/lang/isPlainObject');
+
+var _lodashLangIsPlainObject2 = _interopRequireDefault(_lodashLangIsPlainObject);
+
+var ALLOWED_SPEC_METHODS = ['canDrop', 'hover', 'drop'];
+
+function createTargetFactory(spec) {
+  Object.keys(spec).forEach(function (key) {
+    _invariant2['default'](ALLOWED_SPEC_METHODS.indexOf(key) > -1, 'Expected the drop target specification to only have ' + 'some of the following keys: %s. ' + 'Instead received a specification with an unexpected "%s" key. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drop-target.html', ALLOWED_SPEC_METHODS.join(', '), key);
+    _invariant2['default'](typeof spec[key] === 'function', 'Expected %s in the drop target specification to be a function. ' + 'Instead received a specification with %s: %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drop-target.html', key, key, spec[key]);
+  });
+
+  var Target = (function () {
+    function Target(monitor) {
+      _classCallCheck(this, Target);
+
+      this.monitor = monitor;
+      this.props = null;
+      this.component = null;
+    }
+
+    Target.prototype.receiveProps = function receiveProps(props) {
+      this.props = props;
+    };
+
+    Target.prototype.receiveMonitor = function receiveMonitor(monitor) {
+      this.monitor = monitor;
+    };
+
+    Target.prototype.receiveComponent = function receiveComponent(component) {
+      this.component = component;
+    };
+
+    Target.prototype.canDrop = function canDrop() {
+      if (!spec.canDrop) {
+        return true;
+      }
+
+      return spec.canDrop(this.props, this.monitor);
+    };
+
+    Target.prototype.hover = function hover() {
+      if (!spec.hover) {
+        return;
+      }
+
+      spec.hover(this.props, this.monitor, this.component);
+    };
+
+    Target.prototype.drop = function drop() {
+      if (!spec.drop) {
+        return;
+      }
+
+      var dropResult = spec.drop(this.props, this.monitor, this.component);
+      if (process.env.NODE_ENV !== 'production') {
+        _invariant2['default'](typeof dropResult === 'undefined' || _lodashLangIsPlainObject2['default'](dropResult), 'drop() must either return undefined, or an object that represents the drop result. ' + 'Instead received %s. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drop-target.html', dropResult);
+      }
+      return dropResult;
+    };
+
+    return Target;
+  })();
+
+  return function createTarget(monitor) {
+    return new Target(monitor);
+  };
+}
+
+module.exports = exports['default'];
+}).call(this,require("oMfpAn"))
+},{"invariant":104,"lodash/lang/isPlainObject":134,"oMfpAn":2}],71:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = createTargetMonitor;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+var _invariant = require('invariant');
+
+var _invariant2 = _interopRequireDefault(_invariant);
+
+var isCallingCanDrop = false;
+
+var TargetMonitor = (function () {
+  function TargetMonitor(manager) {
+    _classCallCheck(this, TargetMonitor);
+
+    this.internalMonitor = manager.getMonitor();
+  }
+
+  TargetMonitor.prototype.receiveHandlerId = function receiveHandlerId(targetId) {
+    this.targetId = targetId;
+  };
+
+  TargetMonitor.prototype.canDrop = function canDrop() {
+    _invariant2['default'](!isCallingCanDrop, 'You may not call monitor.canDrop() inside your canDrop() implementation. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-drop-target-monitor.html');
+
+    try {
+      isCallingCanDrop = true;
+      return this.internalMonitor.canDropOnTarget(this.targetId);
+    } finally {
+      isCallingCanDrop = false;
+    }
+  };
+
+  TargetMonitor.prototype.isOver = function isOver(options) {
+    return this.internalMonitor.isOverTarget(this.targetId, options);
+  };
+
+  TargetMonitor.prototype.getItemType = function getItemType() {
+    return this.internalMonitor.getItemType();
+  };
+
+  TargetMonitor.prototype.getItem = function getItem() {
+    return this.internalMonitor.getItem();
+  };
+
+  TargetMonitor.prototype.getDropResult = function getDropResult() {
+    return this.internalMonitor.getDropResult();
+  };
+
+  TargetMonitor.prototype.didDrop = function didDrop() {
+    return this.internalMonitor.didDrop();
+  };
+
+  TargetMonitor.prototype.getInitialClientOffset = function getInitialClientOffset() {
+    return this.internalMonitor.getInitialClientOffset();
+  };
+
+  TargetMonitor.prototype.getInitialSourceClientOffset = function getInitialSourceClientOffset() {
+    return this.internalMonitor.getInitialSourceClientOffset();
+  };
+
+  TargetMonitor.prototype.getSourceClientOffset = function getSourceClientOffset() {
+    return this.internalMonitor.getSourceClientOffset();
+  };
+
+  TargetMonitor.prototype.getClientOffset = function getClientOffset() {
+    return this.internalMonitor.getClientOffset();
+  };
+
+  TargetMonitor.prototype.getDifferenceFromInitialOffset = function getDifferenceFromInitialOffset() {
+    return this.internalMonitor.getDifferenceFromInitialOffset();
+  };
+
+  return TargetMonitor;
+})();
+
+function createTargetMonitor(manager) {
+  return new TargetMonitor(manager);
+}
+
+module.exports = exports['default'];
+},{"invariant":104}],72:[function(require,module,exports){
+(function (process){
+'use strict';
+
+exports.__esModule = true;
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+exports['default'] = decorateHandler;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _disposables = require('disposables');
+
+var _utilsShallowEqual = require('./utils/shallowEqual');
+
+var _utilsShallowEqual2 = _interopRequireDefault(_utilsShallowEqual);
+
+var _utilsShallowEqualScalar = require('./utils/shallowEqualScalar');
+
+var _utilsShallowEqualScalar2 = _interopRequireDefault(_utilsShallowEqualScalar);
+
+var _lodashLangIsPlainObject = require('lodash/lang/isPlainObject');
+
+var _lodashLangIsPlainObject2 = _interopRequireDefault(_lodashLangIsPlainObject);
+
+var _invariant = require('invariant');
+
+var _invariant2 = _interopRequireDefault(_invariant);
+
+var _bindConnector2 = require('./bindConnector');
+
+var _bindConnector3 = _interopRequireDefault(_bindConnector2);
+
+function decorateHandler(_ref) {
+  var DecoratedComponent = _ref.DecoratedComponent;
+  var createHandler = _ref.createHandler;
+  var createMonitor = _ref.createMonitor;
+  var createConnector = _ref.createConnector;
+  var registerHandler = _ref.registerHandler;
+  var containerDisplayName = _ref.containerDisplayName;
+  var getType = _ref.getType;
+  var collect = _ref.collect;
+  var options = _ref.options;
+  var _options$arePropsEqual = options.arePropsEqual;
+  var arePropsEqual = _options$arePropsEqual === undefined ? _utilsShallowEqualScalar2['default'] : _options$arePropsEqual;
+
+  var displayName = DecoratedComponent.displayName || DecoratedComponent.name || 'Component';
+
+  return (function (_Component) {
+    _inherits(DragDropContainer, _Component);
+
+    DragDropContainer.prototype.getHandlerId = function getHandlerId() {
+      return this.handlerId;
+    };
+
+    DragDropContainer.prototype.getDecoratedComponentInstance = function getDecoratedComponentInstance() {
+      return this.decoratedComponentInstance;
+    };
+
+    DragDropContainer.prototype.shouldComponentUpdate = function shouldComponentUpdate(nextProps, nextState) {
+      return !arePropsEqual(nextProps, this.props) || !_utilsShallowEqual2['default'](nextState, this.state);
+    };
+
+    _createClass(DragDropContainer, null, [{
+      key: 'DecoratedComponent',
+      value: DecoratedComponent,
+      enumerable: true
+    }, {
+      key: 'displayName',
+      value: containerDisplayName + '(' + displayName + ')',
+      enumerable: true
+    }, {
+      key: 'contextTypes',
+      value: {
+        dragDropManager: _react.PropTypes.object.isRequired
+      },
+      enumerable: true
+    }]);
+
+    function DragDropContainer(props, context) {
+      _classCallCheck(this, DragDropContainer);
+
+      _Component.call(this, props, context);
+      this.handleChange = this.handleChange.bind(this);
+      this.handleChildRef = this.handleChildRef.bind(this);
+
+      _invariant2['default'](typeof this.context.dragDropManager === 'object', 'Could not find the drag and drop manager in the context of %s. ' + 'Make sure to wrap the top-level component of your app with DragDropContext. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-troubleshooting.html#could-not-find-the-drag-and-drop-manager-in-the-context', displayName, displayName);
+
+      this.manager = this.context.dragDropManager;
+      this.handlerMonitor = createMonitor(this.manager);
+      this.handler = createHandler(this.handlerMonitor);
+      this.disposable = new _disposables.SerialDisposable();
+
+      this.receiveProps(props);
+      this.state = this.getCurrentState();
+    }
+
+    DragDropContainer.prototype.componentWillReceiveProps = function componentWillReceiveProps(nextProps) {
+      if (!arePropsEqual(nextProps, this.props)) {
+        this.receiveProps(nextProps);
+        this.handleChange();
+      }
+    };
+
+    DragDropContainer.prototype.componentWillUnmount = function componentWillUnmount() {
+      this.disposable.dispose();
+    };
+
+    DragDropContainer.prototype.receiveProps = function receiveProps(props) {
+      this.handler.receiveProps(props);
+      this.receiveType(getType(props));
+    };
+
+    DragDropContainer.prototype.receiveType = function receiveType(type) {
+      if (type === this.currentType) {
+        return;
+      }
+
+      this.currentType = type;
+
+      var _registerHandler = registerHandler(type, this.handler, this.manager);
+
+      var handlerId = _registerHandler.handlerId;
+      var unregister = _registerHandler.unregister;
+
+      var connector = createConnector(this.manager.getBackend());
+
+      var _bindConnector = _bindConnector3['default'](connector, handlerId);
+
+      var handlerConnector = _bindConnector.handlerConnector;
+      var connectorDisposable = _bindConnector.disposable;
+
+      this.handlerId = handlerId;
+      this.handlerConnector = handlerConnector;
+      this.handlerMonitor.receiveHandlerId(handlerId);
+
+      var globalMonitor = this.manager.getMonitor();
+      var unsubscribe = globalMonitor.subscribeToStateChange(this.handleChange, { handlerIds: [handlerId] });
+
+      this.disposable.setDisposable(new _disposables.CompositeDisposable(new _disposables.Disposable(unsubscribe), new _disposables.Disposable(unregister), connectorDisposable));
+    };
+
+    DragDropContainer.prototype.handleChange = function handleChange() {
+      var nextState = this.getCurrentState();
+      if (!_utilsShallowEqual2['default'](nextState, this.state)) {
+        this.setState(nextState);
+      }
+    };
+
+    DragDropContainer.prototype.handleChildRef = function handleChildRef(component) {
+      this.decoratedComponentInstance = component;
+      this.handler.receiveComponent(component);
+    };
+
+    DragDropContainer.prototype.getCurrentState = function getCurrentState() {
+      var nextState = collect(this.handlerConnector, this.handlerMonitor);
+      if (process.env.NODE_ENV !== 'production') {
+        _invariant2['default'](_lodashLangIsPlainObject2['default'](nextState), 'Expected `collect` specified as the second argument to ' + '%s for %s to return a plain object of props to inject. ' + 'Instead, received %s.', containerDisplayName, displayName, nextState);
+      }
+      return nextState;
+    };
+
+    DragDropContainer.prototype.render = function render() {
+      return _react2['default'].createElement(DecoratedComponent, _extends({}, this.props, this.state, {
+        ref: this.handleChildRef }));
+    };
+
+    return DragDropContainer;
+  })(_react.Component);
+}
+
+module.exports = exports['default'];
+}).call(this,require("oMfpAn"))
+},{"./bindConnector":64,"./utils/shallowEqual":79,"./utils/shallowEqualScalar":80,"disposables":84,"invariant":104,"lodash/lang/isPlainObject":134,"oMfpAn":2,"react":292}],73:[function(require,module,exports){
+(function (process){
+'use strict';
+
+exports.__esModule = true;
+
+function _interopRequire(obj) { return obj && obj.__esModule ? obj['default'] : obj; }
+
+var _DragDropContext = require('./DragDropContext');
+
+exports.DragDropContext = _interopRequire(_DragDropContext);
+
+var _DragLayer = require('./DragLayer');
+
+exports.DragLayer = _interopRequire(_DragLayer);
+
+var _DragSource = require('./DragSource');
+
+exports.DragSource = _interopRequire(_DragSource);
+
+var _DropTarget = require('./DropTarget');
+
+exports.DropTarget = _interopRequire(_DropTarget);
+
+if (process.env.NODE_ENV !== 'production') {
+  Object.defineProperty(exports, 'default', {
+    get: function get() {
+      console.error( // eslint-disable-line no-console
+      'React DnD does not provide a default export. ' + 'You are probably missing the curly braces in the import statement. ' + 'Read more: http://gaearon.github.io/react-dnd/docs-troubleshooting.html#react-dnd-does-not-provide-a-default-export');
+    }
+  });
+}
+}).call(this,require("oMfpAn"))
+},{"./DragDropContext":60,"./DragLayer":61,"./DragSource":62,"./DropTarget":63,"oMfpAn":2}],74:[function(require,module,exports){
+"use strict";
+
+exports.__esModule = true;
+exports["default"] = registerSource;
+
+function registerSource(type, source, manager) {
+  var registry = manager.getRegistry();
+  var sourceId = registry.addSource(type, source);
+
+  function unregisterSource() {
+    registry.removeSource(sourceId);
+  }
+
+  return {
+    handlerId: sourceId,
+    unregister: unregisterSource
+  };
+}
+
+module.exports = exports["default"];
+},{}],75:[function(require,module,exports){
+"use strict";
+
+exports.__esModule = true;
+exports["default"] = registerTarget;
+
+function registerTarget(type, target, manager) {
+  var registry = manager.getRegistry();
+  var targetId = registry.addTarget(type, target);
+
+  function unregisterTarget() {
+    registry.removeTarget(targetId);
+  }
+
+  return {
+    handlerId: targetId,
+    unregister: unregisterTarget
+  };
+}
+
+module.exports = exports["default"];
+},{}],76:[function(require,module,exports){
+(function (process){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = checkDecoratorArguments;
+
+function checkDecoratorArguments(functionName, signature) {
+  if (process.env.NODE_ENV !== 'production') {
+    for (var _len = arguments.length, args = Array(_len > 2 ? _len - 2 : 0), _key = 2; _key < _len; _key++) {
+      args[_key - 2] = arguments[_key];
+    }
+
+    for (var i = 0; i < args.length; i++) {
+      var arg = args[i];
+      if (arg && arg.prototype && arg.prototype.render) {
+        console.error( // eslint-disable-line no-console
+        'You seem to be applying the arguments in the wrong order. ' + ('It should be ' + functionName + '(' + signature + ')(Component), not the other way around. ') + 'Read more: http://gaearon.github.io/react-dnd/docs-troubleshooting.html#you-seem-to-be-applying-the-arguments-in-the-wrong-order');
+        return;
+      }
+    }
+  }
+}
+
+module.exports = exports['default'];
+}).call(this,require("oMfpAn"))
+},{"oMfpAn":2}],77:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = cloneWithRef;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _invariant = require('invariant');
+
+var _invariant2 = _interopRequireDefault(_invariant);
+
+var _react = require('react');
+
+function cloneWithRef(element, newRef) {
+  var previousRef = element.ref;
+  _invariant2['default'](typeof previousRef !== 'string', 'Cannot connect React DnD to an element with an existing string ref. ' + 'Please convert it to use a callback ref instead, or wrap it into a <span> or <div>. ' + 'Read more: https://facebook.github.io/react/docs/more-about-refs.html#the-ref-callback-attribute');
+
+  return _react.cloneElement(element, {
+    ref: function ref(instance) {
+      newRef(instance);
+
+      if (previousRef) {
+        previousRef(instance);
+      }
+    }
+  });
+}
+
+module.exports = exports['default'];
+},{"invariant":104,"react":292}],78:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = isValidType;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _lodashLangIsArray = require('lodash/lang/isArray');
+
+var _lodashLangIsArray2 = _interopRequireDefault(_lodashLangIsArray);
+
+function isValidType(type, allowArray) {
+       return typeof type === 'string' || typeof type === 'symbol' || allowArray && _lodashLangIsArray2['default'](type) && type.every(function (t) {
+              return isValidType(t, false);
+       });
+}
+
+module.exports = exports['default'];
+},{"lodash/lang/isArray":130}],79:[function(require,module,exports){
+module.exports=require(14)
+},{}],80:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = shallowEqualScalar;
+
+function shallowEqualScalar(objA, objB) {
+  if (objA === objB) {
+    return true;
+  }
+
+  if (typeof objA !== 'object' || objA === null || typeof objB !== 'object' || objB === null) {
+    return false;
+  }
+
+  var keysA = Object.keys(objA);
+  var keysB = Object.keys(objB);
+
+  if (keysA.length !== keysB.length) {
+    return false;
+  }
+
+  // Test for A's keys different from B.
+  var hasOwn = Object.prototype.hasOwnProperty;
+  for (var i = 0; i < keysA.length; i++) {
+    if (!hasOwn.call(objB, keysA[i])) {
+      return false;
+    }
+
+    var valA = objA[keysA[i]];
+    var valB = objB[keysA[i]];
+
+    if (valA !== valB || typeof valA === 'object' || typeof valB === 'object') {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+module.exports = exports['default'];
+},{}],81:[function(require,module,exports){
+'use strict';
+
+var _interopRequireWildcard = function (obj) { return obj && obj.__esModule ? obj : { 'default': obj }; };
+
+var _classCallCheck = function (instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } };
+
+exports.__esModule = true;
+
+var _isDisposable = require('./isDisposable');
+
+var _isDisposable2 = _interopRequireWildcard(_isDisposable);
+
+/**
+ * Represents a group of disposable resources that are disposed together.
+ */
+
+var CompositeDisposable = (function () {
+  function CompositeDisposable() {
+    for (var _len = arguments.length, disposables = Array(_len), _key = 0; _key < _len; _key++) {
+      disposables[_key] = arguments[_key];
+    }
+
+    _classCallCheck(this, CompositeDisposable);
+
+    if (Array.isArray(disposables[0]) && disposables.length === 1) {
+      disposables = disposables[0];
+    }
+
+    for (var i = 0; i < disposables.length; i++) {
+      if (!_isDisposable2['default'](disposables[i])) {
+        throw new Error('Expected a disposable');
+      }
+    }
+
+    this.disposables = disposables;
+    this.isDisposed = false;
+  }
+
+  /**
+   * Adds a disposable to the CompositeDisposable or disposes the disposable if the CompositeDisposable is disposed.
+   * @param {Disposable} item Disposable to add.
+   */
+
+  CompositeDisposable.prototype.add = function add(item) {
+    if (this.isDisposed) {
+      item.dispose();
+    } else {
+      this.disposables.push(item);
+    }
+  };
+
+  /**
+   * Removes and disposes the first occurrence of a disposable from the CompositeDisposable.
+   * @param {Disposable} item Disposable to remove.
+   * @returns {Boolean} true if found; false otherwise.
+   */
+
+  CompositeDisposable.prototype.remove = function remove(item) {
+    if (this.isDisposed) {
+      return false;
+    }
+
+    var index = this.disposables.indexOf(item);
+    if (index === -1) {
+      return false;
+    }
+
+    this.disposables.splice(index, 1);
+    item.dispose();
+    return true;
+  };
+
+  /**
+   * Disposes all disposables in the group and removes them from the group.
+   */
+
+  CompositeDisposable.prototype.dispose = function dispose() {
+    if (this.isDisposed) {
+      return;
+    }
+
+    var len = this.disposables.length;
+    var currentDisposables = new Array(len);
+    for (var i = 0; i < len; i++) {
+      currentDisposables[i] = this.disposables[i];
+    }
+
+    this.isDisposed = true;
+    this.disposables = [];
+    this.length = 0;
+
+    for (var i = 0; i < len; i++) {
+      currentDisposables[i].dispose();
+    }
+  };
+
+  return CompositeDisposable;
+})();
+
+exports['default'] = CompositeDisposable;
+module.exports = exports['default'];
+},{"./isDisposable":85}],82:[function(require,module,exports){
+"use strict";
+
+var _classCallCheck = function (instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } };
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+exports.__esModule = true;
+var noop = function noop() {};
+
+/**
+ * The basic disposable.
+ */
+
+var Disposable = (function () {
+  function Disposable(action) {
+    _classCallCheck(this, Disposable);
+
+    this.isDisposed = false;
+    this.action = action || noop;
+  }
+
+  Disposable.prototype.dispose = function dispose() {
+    if (!this.isDisposed) {
+      this.action.call(null);
+      this.isDisposed = true;
+    }
+  };
+
+  _createClass(Disposable, null, [{
+    key: "empty",
+    enumerable: true,
+    value: { dispose: noop }
+  }]);
+
+  return Disposable;
+})();
+
+exports["default"] = Disposable;
+module.exports = exports["default"];
+},{}],83:[function(require,module,exports){
+'use strict';
+
+var _interopRequireWildcard = function (obj) { return obj && obj.__esModule ? obj : { 'default': obj }; };
+
+var _classCallCheck = function (instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } };
+
+exports.__esModule = true;
+
+var _isDisposable = require('./isDisposable');
+
+var _isDisposable2 = _interopRequireWildcard(_isDisposable);
+
+var SerialDisposable = (function () {
+  function SerialDisposable() {
+    _classCallCheck(this, SerialDisposable);
+
+    this.isDisposed = false;
+    this.current = null;
+  }
+
+  /**
+   * Gets the underlying disposable.
+   * @return The underlying disposable.
+   */
+
+  SerialDisposable.prototype.getDisposable = function getDisposable() {
+    return this.current;
+  };
+
+  /**
+   * Sets the underlying disposable.
+   * @param {Disposable} value The new underlying disposable.
+   */
+
+  SerialDisposable.prototype.setDisposable = function setDisposable() {
+    var value = arguments[0] === undefined ? null : arguments[0];
+
+    if (value != null && !_isDisposable2['default'](value)) {
+      throw new Error('Expected either an empty value or a valid disposable');
+    }
+
+    var isDisposed = this.isDisposed;
+    var previous = undefined;
+
+    if (!isDisposed) {
+      previous = this.current;
+      this.current = value;
+    }
+
+    if (previous) {
+      previous.dispose();
+    }
+
+    if (isDisposed && value) {
+      value.dispose();
+    }
+  };
+
+  /**
+   * Disposes the underlying disposable as well as all future replacements.
+   */
+
+  SerialDisposable.prototype.dispose = function dispose() {
+    if (this.isDisposed) {
+      return;
+    }
+
+    this.isDisposed = true;
+    var previous = this.current;
+    this.current = null;
+
+    if (previous) {
+      previous.dispose();
+    }
+  };
+
+  return SerialDisposable;
+})();
+
+exports['default'] = SerialDisposable;
+module.exports = exports['default'];
+},{"./isDisposable":85}],84:[function(require,module,exports){
+'use strict';
+
+var _interopRequireWildcard = function (obj) { return obj && obj.__esModule ? obj : { 'default': obj }; };
+
+exports.__esModule = true;
+
+var _isDisposable2 = require('./isDisposable');
+
+var _isDisposable3 = _interopRequireWildcard(_isDisposable2);
+
+exports.isDisposable = _isDisposable3['default'];
+
+var _Disposable2 = require('./Disposable');
+
+var _Disposable3 = _interopRequireWildcard(_Disposable2);
+
+exports.Disposable = _Disposable3['default'];
+
+var _CompositeDisposable2 = require('./CompositeDisposable');
+
+var _CompositeDisposable3 = _interopRequireWildcard(_CompositeDisposable2);
+
+exports.CompositeDisposable = _CompositeDisposable3['default'];
+
+var _SerialDisposable2 = require('./SerialDisposable');
+
+var _SerialDisposable3 = _interopRequireWildcard(_SerialDisposable2);
+
+exports.SerialDisposable = _SerialDisposable3['default'];
+},{"./CompositeDisposable":81,"./Disposable":82,"./SerialDisposable":83,"./isDisposable":85}],85:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = isDisposable;
+
+function isDisposable(obj) {
+  return Boolean(obj && typeof obj.dispose === 'function');
+}
+
+module.exports = exports['default'];
+},{}],86:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj['default'] = obj; return newObj; } }
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+var _reduxLibCreateStore = require('redux/lib/createStore');
+
+var _reduxLibCreateStore2 = _interopRequireDefault(_reduxLibCreateStore);
+
+var _reducers = require('./reducers');
+
+var _reducers2 = _interopRequireDefault(_reducers);
+
+var _actionsDragDrop = require('./actions/dragDrop');
+
+var dragDropActions = _interopRequireWildcard(_actionsDragDrop);
+
+var _DragDropMonitor = require('./DragDropMonitor');
+
+var _DragDropMonitor2 = _interopRequireDefault(_DragDropMonitor);
+
+var _HandlerRegistry = require('./HandlerRegistry');
+
+var _HandlerRegistry2 = _interopRequireDefault(_HandlerRegistry);
+
+var DragDropManager = (function () {
+  function DragDropManager(createBackend) {
+    _classCallCheck(this, DragDropManager);
+
+    var store = _reduxLibCreateStore2['default'](_reducers2['default']);
+
+    this.store = store;
+    this.monitor = new _DragDropMonitor2['default'](store);
+    this.registry = this.monitor.registry;
+    this.backend = createBackend(this);
+
+    store.subscribe(this.handleRefCountChange.bind(this));
+  }
+
+  DragDropManager.prototype.handleRefCountChange = function handleRefCountChange() {
+    var shouldSetUp = this.store.getState().refCount > 0;
+    if (shouldSetUp && !this.isSetUp) {
+      this.backend.setup();
+      this.isSetUp = true;
+    } else if (!shouldSetUp && this.isSetUp) {
+      this.backend.teardown();
+      this.isSetUp = false;
+    }
+  };
+
+  DragDropManager.prototype.getMonitor = function getMonitor() {
+    return this.monitor;
+  };
+
+  DragDropManager.prototype.getBackend = function getBackend() {
+    return this.backend;
+  };
+
+  DragDropManager.prototype.getRegistry = function getRegistry() {
+    return this.registry;
+  };
+
+  DragDropManager.prototype.getActions = function getActions() {
+    var manager = this;
+    var dispatch = this.store.dispatch;
+
+    function bindActionCreator(actionCreator) {
+      return function () {
+        var action = actionCreator.apply(manager, arguments);
+        if (typeof action !== 'undefined') {
+          dispatch(action);
+        }
+      };
+    }
+
+    return Object.keys(dragDropActions).filter(function (key) {
+      return typeof dragDropActions[key] === 'function';
+    }).reduce(function (boundActions, key) {
+      boundActions[key] = bindActionCreator(dragDropActions[key]);
+      return boundActions;
+    }, {});
+  };
+
+  return DragDropManager;
+})();
+
+exports['default'] = DragDropManager;
+module.exports = exports['default'];
+},{"./DragDropMonitor":87,"./HandlerRegistry":90,"./actions/dragDrop":91,"./reducers":98,"redux/lib/createStore":102}],87:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+var _invariant = require('invariant');
+
+var _invariant2 = _interopRequireDefault(_invariant);
+
+var _utilsMatchesType = require('./utils/matchesType');
+
+var _utilsMatchesType2 = _interopRequireDefault(_utilsMatchesType);
+
+var _lodashLangIsArray = require('lodash/lang/isArray');
+
+var _lodashLangIsArray2 = _interopRequireDefault(_lodashLangIsArray);
+
+var _HandlerRegistry = require('./HandlerRegistry');
+
+var _HandlerRegistry2 = _interopRequireDefault(_HandlerRegistry);
+
+var _reducersDragOffset = require('./reducers/dragOffset');
+
+var _reducersDirtyHandlerIds = require('./reducers/dirtyHandlerIds');
+
+var DragDropMonitor = (function () {
+  function DragDropMonitor(store) {
+    _classCallCheck(this, DragDropMonitor);
+
+    this.store = store;
+    this.registry = new _HandlerRegistry2['default'](store);
+  }
+
+  DragDropMonitor.prototype.subscribeToStateChange = function subscribeToStateChange(listener) {
+    var _this = this;
+
+    var _ref = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+    var handlerIds = _ref.handlerIds;
+
+    _invariant2['default'](typeof listener === 'function', 'listener must be a function.');
+    _invariant2['default'](typeof handlerIds === 'undefined' || _lodashLangIsArray2['default'](handlerIds), 'handlerIds, when specified, must be an array of strings.');
+
+    var handleChange = function handleChange() {
+      if (_reducersDirtyHandlerIds.areDirty(_this.store.getState().dirtyHandlerIds, handlerIds)) {
+        listener();
+      }
+    };
+
+    return this.store.subscribe(handleChange);
+  };
+
+  DragDropMonitor.prototype.subscribeToOffsetChange = function subscribeToOffsetChange(listener) {
+    var _this2 = this;
+
+    _invariant2['default'](typeof listener === 'function', 'listener must be a function.');
+
+    var previousState = this.store.getState().dragOffset;
+    var handleChange = function handleChange() {
+      var nextState = _this2.store.getState().dragOffset;
+      if (nextState === previousState) {
+        return;
+      }
+
+      previousState = nextState;
+      listener();
+    };
+
+    return this.store.subscribe(handleChange);
+  };
+
+  DragDropMonitor.prototype.canDragSource = function canDragSource(sourceId) {
+    var source = this.registry.getSource(sourceId);
+    _invariant2['default'](source, 'Expected to find a valid source.');
+
+    if (this.isDragging()) {
+      return false;
+    }
+
+    return source.canDrag(this, sourceId);
+  };
+
+  DragDropMonitor.prototype.canDropOnTarget = function canDropOnTarget(targetId) {
+    var target = this.registry.getTarget(targetId);
+    _invariant2['default'](target, 'Expected to find a valid target.');
+
+    if (!this.isDragging() || this.didDrop()) {
+      return false;
+    }
+
+    var targetType = this.registry.getTargetType(targetId);
+    var draggedItemType = this.getItemType();
+    return _utilsMatchesType2['default'](targetType, draggedItemType) && target.canDrop(this, targetId);
+  };
+
+  DragDropMonitor.prototype.isDragging = function isDragging() {
+    return Boolean(this.getItemType());
+  };
+
+  DragDropMonitor.prototype.isDraggingSource = function isDraggingSource(sourceId) {
+    var source = this.registry.getSource(sourceId, true);
+    _invariant2['default'](source, 'Expected to find a valid source.');
+
+    if (!this.isDragging() || !this.isSourcePublic()) {
+      return false;
+    }
+
+    var sourceType = this.registry.getSourceType(sourceId);
+    var draggedItemType = this.getItemType();
+    if (sourceType !== draggedItemType) {
+      return false;
+    }
+
+    return source.isDragging(this, sourceId);
+  };
+
+  DragDropMonitor.prototype.isOverTarget = function isOverTarget(targetId) {
+    var _ref2 = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+    var _ref2$shallow = _ref2.shallow;
+    var shallow = _ref2$shallow === undefined ? false : _ref2$shallow;
+
+    if (!this.isDragging()) {
+      return false;
+    }
+
+    var targetType = this.registry.getTargetType(targetId);
+    var draggedItemType = this.getItemType();
+    if (!_utilsMatchesType2['default'](targetType, draggedItemType)) {
+      return false;
+    }
+
+    var targetIds = this.getTargetIds();
+    if (!targetIds.length) {
+      return false;
+    }
+
+    var index = targetIds.indexOf(targetId);
+    if (shallow) {
+      return index === targetIds.length - 1;
+    } else {
+      return index > -1;
+    }
+  };
+
+  DragDropMonitor.prototype.getItemType = function getItemType() {
+    return this.store.getState().dragOperation.itemType;
+  };
+
+  DragDropMonitor.prototype.getItem = function getItem() {
+    return this.store.getState().dragOperation.item;
+  };
+
+  DragDropMonitor.prototype.getSourceId = function getSourceId() {
+    return this.store.getState().dragOperation.sourceId;
+  };
+
+  DragDropMonitor.prototype.getTargetIds = function getTargetIds() {
+    return this.store.getState().dragOperation.targetIds;
+  };
+
+  DragDropMonitor.prototype.getDropResult = function getDropResult() {
+    return this.store.getState().dragOperation.dropResult;
+  };
+
+  DragDropMonitor.prototype.didDrop = function didDrop() {
+    return this.store.getState().dragOperation.didDrop;
+  };
+
+  DragDropMonitor.prototype.isSourcePublic = function isSourcePublic() {
+    return this.store.getState().dragOperation.isSourcePublic;
+  };
+
+  DragDropMonitor.prototype.getInitialClientOffset = function getInitialClientOffset() {
+    return this.store.getState().dragOffset.initialClientOffset;
+  };
+
+  DragDropMonitor.prototype.getInitialSourceClientOffset = function getInitialSourceClientOffset() {
+    return this.store.getState().dragOffset.initialSourceClientOffset;
+  };
+
+  DragDropMonitor.prototype.getClientOffset = function getClientOffset() {
+    return this.store.getState().dragOffset.clientOffset;
+  };
+
+  DragDropMonitor.prototype.getSourceClientOffset = function getSourceClientOffset() {
+    return _reducersDragOffset.getSourceClientOffset(this.store.getState().dragOffset);
+  };
+
+  DragDropMonitor.prototype.getDifferenceFromInitialOffset = function getDifferenceFromInitialOffset() {
+    return _reducersDragOffset.getDifferenceFromInitialOffset(this.store.getState().dragOffset);
+  };
+
+  return DragDropMonitor;
+})();
+
+exports['default'] = DragDropMonitor;
+module.exports = exports['default'];
+},{"./HandlerRegistry":90,"./reducers/dirtyHandlerIds":95,"./reducers/dragOffset":96,"./utils/matchesType":101,"invariant":104,"lodash/lang/isArray":130}],88:[function(require,module,exports){
+"use strict";
+
+exports.__esModule = true;
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var DragSource = (function () {
+  function DragSource() {
+    _classCallCheck(this, DragSource);
+  }
+
+  DragSource.prototype.canDrag = function canDrag() {
+    return true;
+  };
+
+  DragSource.prototype.isDragging = function isDragging(monitor, handle) {
+    return handle === monitor.getSourceId();
+  };
+
+  DragSource.prototype.endDrag = function endDrag() {};
+
+  return DragSource;
+})();
+
+exports["default"] = DragSource;
+module.exports = exports["default"];
+},{}],89:[function(require,module,exports){
+"use strict";
+
+exports.__esModule = true;
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var DropTarget = (function () {
+  function DropTarget() {
+    _classCallCheck(this, DropTarget);
+  }
+
+  DropTarget.prototype.canDrop = function canDrop() {
+    return true;
+  };
+
+  DropTarget.prototype.hover = function hover() {};
+
+  DropTarget.prototype.drop = function drop() {};
+
+  return DropTarget;
+})();
+
+exports["default"] = DropTarget;
+module.exports = exports["default"];
+},{}],90:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+function _typeof(obj) { return obj && obj.constructor === Symbol ? 'symbol' : typeof obj; }
+
+var _invariant = require('invariant');
+
+var _invariant2 = _interopRequireDefault(_invariant);
+
+var _lodashLangIsArray = require('lodash/lang/isArray');
+
+var _lodashLangIsArray2 = _interopRequireDefault(_lodashLangIsArray);
+
+var _utilsGetNextUniqueId = require('./utils/getNextUniqueId');
+
+var _utilsGetNextUniqueId2 = _interopRequireDefault(_utilsGetNextUniqueId);
+
+var _actionsRegistry = require('./actions/registry');
+
+var HandlerRoles = {
+  SOURCE: 'SOURCE',
+  TARGET: 'TARGET'
+};
+
+function validateSourceContract(source) {
+  _invariant2['default'](typeof source.canDrag === 'function', 'Expected canDrag to be a function.');
+  _invariant2['default'](typeof source.beginDrag === 'function', 'Expected beginDrag to be a function.');
+  _invariant2['default'](typeof source.endDrag === 'function', 'Expected endDrag to be a function.');
+}
+
+function validateTargetContract(target) {
+  _invariant2['default'](typeof target.canDrop === 'function', 'Expected canDrop to be a function.');
+  _invariant2['default'](typeof target.hover === 'function', 'Expected hover to be a function.');
+  _invariant2['default'](typeof target.drop === 'function', 'Expected beginDrag to be a function.');
+}
+
+function validateType(type, allowArray) {
+  if (allowArray && _lodashLangIsArray2['default'](type)) {
+    type.forEach(function (t) {
+      return validateType(t, false);
+    });
+    return;
+  }
+
+  _invariant2['default'](typeof type === 'string' || (typeof type === 'undefined' ? 'undefined' : _typeof(type)) === 'symbol', allowArray ? 'Type can only be a string, a symbol, or an array of either.' : 'Type can only be a string or a symbol.');
+}
+
+function getNextHandlerId(role) {
+  var id = _utilsGetNextUniqueId2['default']().toString();
+  switch (role) {
+    case HandlerRoles.SOURCE:
+      return 'S' + id;
+    case HandlerRoles.TARGET:
+      return 'T' + id;
+    default:
+      _invariant2['default'](false, 'Unknown role: ' + role);
+  }
+}
+
+function parseRoleFromHandlerId(handlerId) {
+  switch (handlerId[0]) {
+    case 'S':
+      return HandlerRoles.SOURCE;
+    case 'T':
+      return HandlerRoles.TARGET;
+    default:
+      _invariant2['default'](false, 'Cannot parse handler ID: ' + handlerId);
+  }
+}
+
+var HandlerRegistry = (function () {
+  function HandlerRegistry(store) {
+    _classCallCheck(this, HandlerRegistry);
+
+    this.store = store;
+
+    this.types = {};
+    this.handlers = {};
+
+    this.pinnedSourceId = null;
+    this.pinnedSource = null;
+  }
+
+  HandlerRegistry.prototype.addSource = function addSource(type, source) {
+    validateType(type);
+    validateSourceContract(source);
+
+    var sourceId = this.addHandler(HandlerRoles.SOURCE, type, source);
+    this.store.dispatch(_actionsRegistry.addSource(sourceId));
+    return sourceId;
+  };
+
+  HandlerRegistry.prototype.addTarget = function addTarget(type, target) {
+    validateType(type, true);
+    validateTargetContract(target);
+
+    var targetId = this.addHandler(HandlerRoles.TARGET, type, target);
+    this.store.dispatch(_actionsRegistry.addTarget(targetId));
+    return targetId;
+  };
+
+  HandlerRegistry.prototype.addHandler = function addHandler(role, type, handler) {
+    var id = getNextHandlerId(role);
+    this.types[id] = type;
+    this.handlers[id] = handler;
+
+    return id;
+  };
+
+  HandlerRegistry.prototype.containsHandler = function containsHandler(handler) {
+    var _this = this;
+
+    return Object.keys(this.handlers).some(function (key) {
+      return _this.handlers[key] === handler;
+    });
+  };
+
+  HandlerRegistry.prototype.getSource = function getSource(sourceId, includePinned) {
+    _invariant2['default'](this.isSourceId(sourceId), 'Expected a valid source ID.');
+
+    var isPinned = includePinned && sourceId === this.pinnedSourceId;
+    var source = isPinned ? this.pinnedSource : this.handlers[sourceId];
+
+    return source;
+  };
+
+  HandlerRegistry.prototype.getTarget = function getTarget(targetId) {
+    _invariant2['default'](this.isTargetId(targetId), 'Expected a valid target ID.');
+    return this.handlers[targetId];
+  };
+
+  HandlerRegistry.prototype.getSourceType = function getSourceType(sourceId) {
+    _invariant2['default'](this.isSourceId(sourceId), 'Expected a valid source ID.');
+    return this.types[sourceId];
+  };
+
+  HandlerRegistry.prototype.getTargetType = function getTargetType(targetId) {
+    _invariant2['default'](this.isTargetId(targetId), 'Expected a valid target ID.');
+    return this.types[targetId];
+  };
+
+  HandlerRegistry.prototype.isSourceId = function isSourceId(handlerId) {
+    var role = parseRoleFromHandlerId(handlerId);
+    return role === HandlerRoles.SOURCE;
+  };
+
+  HandlerRegistry.prototype.isTargetId = function isTargetId(handlerId) {
+    var role = parseRoleFromHandlerId(handlerId);
+    return role === HandlerRoles.TARGET;
+  };
+
+  HandlerRegistry.prototype.removeSource = function removeSource(sourceId) {
+    _invariant2['default'](this.getSource(sourceId), 'Expected an existing source.');
+    this.store.dispatch(_actionsRegistry.removeSource(sourceId));
+    delete this.handlers[sourceId];
+    delete this.types[sourceId];
+  };
+
+  HandlerRegistry.prototype.removeTarget = function removeTarget(targetId) {
+    _invariant2['default'](this.getTarget(targetId), 'Expected an existing target.');
+    this.store.dispatch(_actionsRegistry.removeTarget(targetId));
+    delete this.handlers[targetId];
+    delete this.types[targetId];
+  };
+
+  HandlerRegistry.prototype.pinSource = function pinSource(sourceId) {
+    var source = this.getSource(sourceId);
+    _invariant2['default'](source, 'Expected an existing source.');
+
+    this.pinnedSourceId = sourceId;
+    this.pinnedSource = source;
+  };
+
+  HandlerRegistry.prototype.unpinSource = function unpinSource() {
+    _invariant2['default'](this.pinnedSource, 'No source is pinned at the time.');
+
+    this.pinnedSourceId = null;
+    this.pinnedSource = null;
+  };
+
+  return HandlerRegistry;
+})();
+
+exports['default'] = HandlerRegistry;
+module.exports = exports['default'];
+},{"./actions/registry":92,"./utils/getNextUniqueId":100,"invariant":104,"lodash/lang/isArray":130}],91:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports.beginDrag = beginDrag;
+exports.publishDragSource = publishDragSource;
+exports.hover = hover;
+exports.drop = drop;
+exports.endDrag = endDrag;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _utilsMatchesType = require('../utils/matchesType');
+
+var _utilsMatchesType2 = _interopRequireDefault(_utilsMatchesType);
+
+var _invariant = require('invariant');
+
+var _invariant2 = _interopRequireDefault(_invariant);
+
+var _lodashLangIsArray = require('lodash/lang/isArray');
+
+var _lodashLangIsArray2 = _interopRequireDefault(_lodashLangIsArray);
+
+var _lodashLangIsObject = require('lodash/lang/isObject');
+
+var _lodashLangIsObject2 = _interopRequireDefault(_lodashLangIsObject);
+
+var BEGIN_DRAG = 'dnd-core/BEGIN_DRAG';
+exports.BEGIN_DRAG = BEGIN_DRAG;
+var PUBLISH_DRAG_SOURCE = 'dnd-core/PUBLISH_DRAG_SOURCE';
+exports.PUBLISH_DRAG_SOURCE = PUBLISH_DRAG_SOURCE;
+var HOVER = 'dnd-core/HOVER';
+exports.HOVER = HOVER;
+var DROP = 'dnd-core/DROP';
+exports.DROP = DROP;
+var END_DRAG = 'dnd-core/END_DRAG';
+
+exports.END_DRAG = END_DRAG;
+
+function beginDrag(sourceIds) {
+  var _ref = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+  var _ref$publishSource = _ref.publishSource;
+  var publishSource = _ref$publishSource === undefined ? true : _ref$publishSource;
+  var _ref$clientOffset = _ref.clientOffset;
+  var clientOffset = _ref$clientOffset === undefined ? null : _ref$clientOffset;
+  var getSourceClientOffset = _ref.getSourceClientOffset;
+
+  _invariant2['default'](_lodashLangIsArray2['default'](sourceIds), 'Expected sourceIds to be an array.');
+
+  var monitor = this.getMonitor();
+  var registry = this.getRegistry();
+  _invariant2['default'](!monitor.isDragging(), 'Cannot call beginDrag while dragging.');
+
+  for (var i = 0; i < sourceIds.length; i++) {
+    _invariant2['default'](registry.getSource(sourceIds[i]), 'Expected sourceIds to be registered.');
+  }
+
+  var sourceId = null;
+  for (var i = sourceIds.length - 1; i >= 0; i--) {
+    if (monitor.canDragSource(sourceIds[i])) {
+      sourceId = sourceIds[i];
+      break;
+    }
+  }
+  if (sourceId === null) {
+    return;
+  }
+
+  var sourceClientOffset = null;
+  if (clientOffset) {
+    _invariant2['default'](typeof getSourceClientOffset === 'function', 'When clientOffset is provided, getSourceClientOffset must be a function.');
+    sourceClientOffset = getSourceClientOffset(sourceId);
+  }
+
+  var source = registry.getSource(sourceId);
+  var item = source.beginDrag(monitor, sourceId);
+  _invariant2['default'](_lodashLangIsObject2['default'](item), 'Item must be an object.');
+
+  registry.pinSource(sourceId);
+
+  var itemType = registry.getSourceType(sourceId);
+  return {
+    type: BEGIN_DRAG,
+    itemType: itemType,
+    item: item,
+    sourceId: sourceId,
+    clientOffset: clientOffset,
+    sourceClientOffset: sourceClientOffset,
+    isSourcePublic: publishSource
+  };
+}
+
+function publishDragSource(manager) {
+  var monitor = this.getMonitor();
+  if (!monitor.isDragging()) {
+    return;
+  }
+
+  return {
+    type: PUBLISH_DRAG_SOURCE
+  };
+}
+
+function hover(targetIds) {
+  var _ref2 = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+  var _ref2$clientOffset = _ref2.clientOffset;
+  var clientOffset = _ref2$clientOffset === undefined ? null : _ref2$clientOffset;
+
+  _invariant2['default'](_lodashLangIsArray2['default'](targetIds), 'Expected targetIds to be an array.');
+  targetIds = targetIds.slice(0);
+
+  var monitor = this.getMonitor();
+  var registry = this.getRegistry();
+  _invariant2['default'](monitor.isDragging(), 'Cannot call hover while not dragging.');
+  _invariant2['default'](!monitor.didDrop(), 'Cannot call hover after drop.');
+
+  var draggedItemType = monitor.getItemType();
+  for (var i = 0; i < targetIds.length; i++) {
+    var targetId = targetIds[i];
+    _invariant2['default'](targetIds.lastIndexOf(targetId) === i, 'Expected targetIds to be unique in the passed array.');
+
+    var target = registry.getTarget(targetId);
+    _invariant2['default'](target, 'Expected targetIds to be registered.');
+
+    var targetType = registry.getTargetType(targetId);
+    if (_utilsMatchesType2['default'](targetType, draggedItemType)) {
+      target.hover(monitor, targetId);
+    }
+  }
+
+  return {
+    type: HOVER,
+    targetIds: targetIds,
+    clientOffset: clientOffset
+  };
+}
+
+function drop() {
+  var _this = this;
+
+  var monitor = this.getMonitor();
+  var registry = this.getRegistry();
+  _invariant2['default'](monitor.isDragging(), 'Cannot call drop while not dragging.');
+  _invariant2['default'](!monitor.didDrop(), 'Cannot call drop twice during one drag operation.');
+
+  var targetIds = monitor.getTargetIds().filter(monitor.canDropOnTarget, monitor);
+
+  targetIds.reverse();
+  targetIds.forEach(function (targetId, index) {
+    var target = registry.getTarget(targetId);
+
+    var dropResult = target.drop(monitor, targetId);
+    _invariant2['default'](typeof dropResult === 'undefined' || _lodashLangIsObject2['default'](dropResult), 'Drop result must either be an object or undefined.');
+    if (typeof dropResult === 'undefined') {
+      dropResult = index === 0 ? {} : monitor.getDropResult();
+    }
+
+    _this.store.dispatch({
+      type: DROP,
+      dropResult: dropResult
+    });
+  });
+}
+
+function endDrag() {
+  var monitor = this.getMonitor();
+  var registry = this.getRegistry();
+  _invariant2['default'](monitor.isDragging(), 'Cannot call endDrag while not dragging.');
+
+  var sourceId = monitor.getSourceId();
+  var source = registry.getSource(sourceId, true);
+  source.endDrag(monitor, sourceId);
+
+  registry.unpinSource();
+
+  return {
+    type: END_DRAG
+  };
+}
+},{"../utils/matchesType":101,"invariant":104,"lodash/lang/isArray":130,"lodash/lang/isObject":133}],92:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports.addSource = addSource;
+exports.addTarget = addTarget;
+exports.removeSource = removeSource;
+exports.removeTarget = removeTarget;
+var ADD_SOURCE = 'dnd-core/ADD_SOURCE';
+exports.ADD_SOURCE = ADD_SOURCE;
+var ADD_TARGET = 'dnd-core/ADD_TARGET';
+exports.ADD_TARGET = ADD_TARGET;
+var REMOVE_SOURCE = 'dnd-core/REMOVE_SOURCE';
+exports.REMOVE_SOURCE = REMOVE_SOURCE;
+var REMOVE_TARGET = 'dnd-core/REMOVE_TARGET';
+
+exports.REMOVE_TARGET = REMOVE_TARGET;
+
+function addSource(sourceId) {
+  return {
+    type: ADD_SOURCE,
+    sourceId: sourceId
+  };
+}
+
+function addTarget(targetId) {
+  return {
+    type: ADD_TARGET,
+    targetId: targetId
+  };
+}
+
+function removeSource(sourceId) {
+  return {
+    type: REMOVE_SOURCE,
+    sourceId: sourceId
+  };
+}
+
+function removeTarget(targetId) {
+  return {
+    type: REMOVE_TARGET,
+    targetId: targetId
+  };
+}
+},{}],93:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = createBackend;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+var _lodashUtilityNoop = require('lodash/utility/noop');
+
+var _lodashUtilityNoop2 = _interopRequireDefault(_lodashUtilityNoop);
+
+var TestBackend = (function () {
+  function TestBackend(manager) {
+    _classCallCheck(this, TestBackend);
+
+    this.actions = manager.getActions();
+  }
+
+  TestBackend.prototype.setup = function setup() {
+    this.didCallSetup = true;
+  };
+
+  TestBackend.prototype.teardown = function teardown() {
+    this.didCallTeardown = true;
+  };
+
+  TestBackend.prototype.connectDragSource = function connectDragSource() {
+    return _lodashUtilityNoop2['default'];
+  };
+
+  TestBackend.prototype.connectDragPreview = function connectDragPreview() {
+    return _lodashUtilityNoop2['default'];
+  };
+
+  TestBackend.prototype.connectDropTarget = function connectDropTarget() {
+    return _lodashUtilityNoop2['default'];
+  };
+
+  TestBackend.prototype.simulateBeginDrag = function simulateBeginDrag(sourceIds, options) {
+    this.actions.beginDrag(sourceIds, options);
+  };
+
+  TestBackend.prototype.simulatePublishDragSource = function simulatePublishDragSource() {
+    this.actions.publishDragSource();
+  };
+
+  TestBackend.prototype.simulateHover = function simulateHover(targetIds, options) {
+    this.actions.hover(targetIds, options);
+  };
+
+  TestBackend.prototype.simulateDrop = function simulateDrop() {
+    this.actions.drop();
+  };
+
+  TestBackend.prototype.simulateEndDrag = function simulateEndDrag() {
+    this.actions.endDrag();
+  };
+
+  return TestBackend;
+})();
+
+function createBackend(manager) {
+  return new TestBackend(manager);
+}
+
+module.exports = exports['default'];
+},{"lodash/utility/noop":136}],94:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+function _interopRequire(obj) { return obj && obj.__esModule ? obj['default'] : obj; }
+
+var _DragDropManager = require('./DragDropManager');
+
+exports.DragDropManager = _interopRequire(_DragDropManager);
+
+var _DragSource = require('./DragSource');
+
+exports.DragSource = _interopRequire(_DragSource);
+
+var _DropTarget = require('./DropTarget');
+
+exports.DropTarget = _interopRequire(_DropTarget);
+
+var _backendsCreateTestBackend = require('./backends/createTestBackend');
+
+exports.createTestBackend = _interopRequire(_backendsCreateTestBackend);
+},{"./DragDropManager":86,"./DragSource":88,"./DropTarget":89,"./backends/createTestBackend":93}],95:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = dirtyHandlerIds;
+exports.areDirty = areDirty;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _lodashArrayXor = require('lodash/array/xor');
+
+var _lodashArrayXor2 = _interopRequireDefault(_lodashArrayXor);
+
+var _lodashArrayIntersection = require('lodash/array/intersection');
+
+var _lodashArrayIntersection2 = _interopRequireDefault(_lodashArrayIntersection);
+
+var _actionsDragDrop = require('../actions/dragDrop');
+
+var _actionsRegistry = require('../actions/registry');
+
+var NONE = [];
+var ALL = [];
+
+function dirtyHandlerIds(state, action, dragOperation) {
+  if (state === undefined) state = NONE;
+
+  switch (action.type) {
+    case _actionsDragDrop.HOVER:
+      break;
+    case _actionsRegistry.ADD_SOURCE:
+    case _actionsRegistry.ADD_TARGET:
+    case _actionsRegistry.REMOVE_TARGET:
+    case _actionsRegistry.REMOVE_SOURCE:
+      return NONE;
+    case _actionsDragDrop.BEGIN_DRAG:
+    case _actionsDragDrop.PUBLISH_DRAG_SOURCE:
+    case _actionsDragDrop.END_DRAG:
+    case _actionsDragDrop.DROP:
+    default:
+      return ALL;
+  }
+
+  var targetIds = action.targetIds;
+  var prevTargetIds = dragOperation.targetIds;
+
+  var dirtyHandlerIds = _lodashArrayXor2['default'](targetIds, prevTargetIds);
+
+  var didChange = false;
+  if (dirtyHandlerIds.length === 0) {
+    for (var i = 0; i < targetIds.length; i++) {
+      if (targetIds[i] !== prevTargetIds[i]) {
+        didChange = true;
+        break;
+      }
+    }
+  } else {
+    didChange = true;
+  }
+
+  if (!didChange) {
+    return NONE;
+  }
+
+  var prevInnermostTargetId = prevTargetIds[prevTargetIds.length - 1];
+  var innermostTargetId = targetIds[targetIds.length - 1];
+
+  if (prevInnermostTargetId !== innermostTargetId) {
+    if (prevInnermostTargetId) {
+      dirtyHandlerIds.push(prevInnermostTargetId);
+    }
+    if (innermostTargetId) {
+      dirtyHandlerIds.push(innermostTargetId);
+    }
+  }
+
+  return dirtyHandlerIds;
+}
+
+function areDirty(state, handlerIds) {
+  if (state === NONE) {
+    return false;
+  }
+
+  if (state === ALL || typeof handlerIds === 'undefined') {
+    return true;
+  }
+
+  return _lodashArrayIntersection2['default'](handlerIds, state).length > 0;
+}
+},{"../actions/dragDrop":91,"../actions/registry":92,"lodash/array/intersection":105,"lodash/array/xor":107}],96:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+exports['default'] = dragOffset;
+exports.getSourceClientOffset = getSourceClientOffset;
+exports.getDifferenceFromInitialOffset = getDifferenceFromInitialOffset;
+
+var _actionsDragDrop = require('../actions/dragDrop');
+
+var initialState = {
+  initialSourceClientOffset: null,
+  initialClientOffset: null,
+  clientOffset: null
+};
+
+function areOffsetsEqual(offsetA, offsetB) {
+  if (offsetA === offsetB) {
+    return true;
+  }
+  return offsetA && offsetB && offsetA.x === offsetB.x && offsetA.y === offsetB.y;
+}
+
+function dragOffset(state, action) {
+  if (state === undefined) state = initialState;
+
+  switch (action.type) {
+    case _actionsDragDrop.BEGIN_DRAG:
+      return {
+        initialSourceClientOffset: action.sourceClientOffset,
+        initialClientOffset: action.clientOffset,
+        clientOffset: action.clientOffset
+      };
+    case _actionsDragDrop.HOVER:
+      if (areOffsetsEqual(state.clientOffset, action.clientOffset)) {
+        return state;
+      }
+      return _extends({}, state, {
+        clientOffset: action.clientOffset
+      });
+    case _actionsDragDrop.END_DRAG:
+    case _actionsDragDrop.DROP:
+      return initialState;
+    default:
+      return state;
+  }
+}
+
+function getSourceClientOffset(state) {
+  var clientOffset = state.clientOffset;
+  var initialClientOffset = state.initialClientOffset;
+  var initialSourceClientOffset = state.initialSourceClientOffset;
+
+  if (!clientOffset || !initialClientOffset || !initialSourceClientOffset) {
+    return null;
+  }
+  return {
+    x: clientOffset.x + initialSourceClientOffset.x - initialClientOffset.x,
+    y: clientOffset.y + initialSourceClientOffset.y - initialClientOffset.y
+  };
+}
+
+function getDifferenceFromInitialOffset(state) {
+  var clientOffset = state.clientOffset;
+  var initialClientOffset = state.initialClientOffset;
+
+  if (!clientOffset || !initialClientOffset) {
+    return null;
+  }
+  return {
+    x: clientOffset.x - initialClientOffset.x,
+    y: clientOffset.y - initialClientOffset.y
+  };
+}
+},{"../actions/dragDrop":91}],97:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+exports['default'] = dragOperation;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _actionsDragDrop = require('../actions/dragDrop');
+
+var _actionsRegistry = require('../actions/registry');
+
+var _lodashArrayWithout = require('lodash/array/without');
+
+var _lodashArrayWithout2 = _interopRequireDefault(_lodashArrayWithout);
+
+var initialState = {
+  itemType: null,
+  item: null,
+  sourceId: null,
+  targetIds: [],
+  dropResult: null,
+  didDrop: false,
+  isSourcePublic: null
+};
+
+function dragOperation(state, action) {
+  if (state === undefined) state = initialState;
+
+  switch (action.type) {
+    case _actionsDragDrop.BEGIN_DRAG:
+      return _extends({}, state, {
+        itemType: action.itemType,
+        item: action.item,
+        sourceId: action.sourceId,
+        isSourcePublic: action.isSourcePublic,
+        dropResult: null,
+        didDrop: false
+      });
+    case _actionsDragDrop.PUBLISH_DRAG_SOURCE:
+      return _extends({}, state, {
+        isSourcePublic: true
+      });
+    case _actionsDragDrop.HOVER:
+      return _extends({}, state, {
+        targetIds: action.targetIds
+      });
+    case _actionsDragDrop.PUBLISH_DRAG_SOURCE:
+      return _extends({}, state, {
+        isSourcePublic: true
+      });
+    case _actionsRegistry.REMOVE_TARGET:
+      if (state.targetIds.indexOf(action.targetId) === -1) {
+        return state;
+      }
+      return _extends({}, state, {
+        targetIds: _lodashArrayWithout2['default'](state.targetIds, action.targetId)
+      });
+    case _actionsDragDrop.DROP:
+      return _extends({}, state, {
+        dropResult: action.dropResult,
+        didDrop: true,
+        targetIds: []
+      });
+    case _actionsDragDrop.END_DRAG:
+      return _extends({}, state, {
+        itemType: null,
+        item: null,
+        sourceId: null,
+        dropResult: null,
+        didDrop: false,
+        isSourcePublic: null,
+        targetIds: []
+      });
+    default:
+      return state;
+  }
+}
+
+module.exports = exports['default'];
+},{"../actions/dragDrop":91,"../actions/registry":92,"lodash/array/without":106}],98:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _dragOffset = require('./dragOffset');
+
+var _dragOffset2 = _interopRequireDefault(_dragOffset);
+
+var _dragOperation = require('./dragOperation');
+
+var _dragOperation2 = _interopRequireDefault(_dragOperation);
+
+var _refCount = require('./refCount');
+
+var _refCount2 = _interopRequireDefault(_refCount);
+
+var _dirtyHandlerIds = require('./dirtyHandlerIds');
+
+var _dirtyHandlerIds2 = _interopRequireDefault(_dirtyHandlerIds);
+
+exports['default'] = function (state, action) {
+  if (state === undefined) state = {};
+
+  return {
+    dirtyHandlerIds: _dirtyHandlerIds2['default'](state.dirtyHandlerIds, action, state.dragOperation),
+    dragOffset: _dragOffset2['default'](state.dragOffset, action),
+    refCount: _refCount2['default'](state.refCount, action),
+    dragOperation: _dragOperation2['default'](state.dragOperation, action)
+  };
+};
+
+module.exports = exports['default'];
+},{"./dirtyHandlerIds":95,"./dragOffset":96,"./dragOperation":97,"./refCount":99}],99:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = refCount;
+
+var _actionsRegistry = require('../actions/registry');
+
+function refCount(state, action) {
+  if (state === undefined) state = 0;
+
+  switch (action.type) {
+    case _actionsRegistry.ADD_SOURCE:
+    case _actionsRegistry.ADD_TARGET:
+      return state + 1;
+    case _actionsRegistry.REMOVE_SOURCE:
+    case _actionsRegistry.REMOVE_TARGET:
+      return state - 1;
+    default:
+      return state;
+  }
+}
+
+module.exports = exports['default'];
+},{"../actions/registry":92}],100:[function(require,module,exports){
+"use strict";
+
+exports.__esModule = true;
+exports["default"] = getNextUniqueId;
+var nextUniqueId = 0;
+
+function getNextUniqueId() {
+  return nextUniqueId++;
+}
+
+module.exports = exports["default"];
+},{}],101:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = matchesType;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _lodashLangIsArray = require('lodash/lang/isArray');
+
+var _lodashLangIsArray2 = _interopRequireDefault(_lodashLangIsArray);
+
+function matchesType(targetType, draggedItemType) {
+  if (_lodashLangIsArray2['default'](targetType)) {
+    return targetType.some(function (t) {
+      return t === draggedItemType;
+    });
+  } else {
+    return targetType === draggedItemType;
+  }
+}
+
+module.exports = exports['default'];
+},{"lodash/lang/isArray":130}],102:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = createStore;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _utilsIsPlainObject = require('./utils/isPlainObject');
+
+var _utilsIsPlainObject2 = _interopRequireDefault(_utilsIsPlainObject);
+
+/**
+ * These are private action types reserved by Redux.
+ * For any unknown actions, you must return the current state.
+ * If the current state is undefined, you must return the initial state.
+ * Do not reference these action types directly in your code.
+ */
+var ActionTypes = {
+  INIT: '@@redux/INIT'
+};
+
+exports.ActionTypes = ActionTypes;
+/**
+ * Creates a Redux store that holds the state tree.
+ * The only way to change the data in the store is to call `dispatch()` on it.
+ *
+ * There should only be a single store in your app. To specify how different
+ * parts of the state tree respond to actions, you may combine several reducers
+ * into a single reducer function by using `combineReducers`.
+ *
+ * @param {Function} reducer A function that returns the next state tree, given
+ * the current state tree and the action to handle.
+ *
+ * @param {any} [initialState] The initial state. You may optionally specify it
+ * to hydrate the state from the server in universal apps, or to restore a
+ * previously serialized user session.
+ * If you use `combineReducers` to produce the root reducer function, this must be
+ * an object with the same shape as `combineReducers` keys.
+ *
+ * @returns {Store} A Redux store that lets you read the state, dispatch actions
+ * and subscribe to changes.
+ */
+
+function createStore(reducer, initialState) {
+  if (typeof reducer !== 'function') {
+    throw new Error('Expected the reducer to be a function.');
+  }
+
+  var currentReducer = reducer;
+  var currentState = initialState;
+  var listeners = [];
+  var isDispatching = false;
+
+  /**
+   * Reads the state tree managed by the store.
+   *
+   * @returns {any} The current state tree of your application.
+   */
+  function getState() {
+    return currentState;
+  }
+
+  /**
+   * Adds a change listener. It will be called any time an action is dispatched,
+   * and some part of the state tree may potentially have changed. You may then
+   * call `getState()` to read the current state tree inside the callback.
+   *
+   * @param {Function} listener A callback to be invoked on every dispatch.
+   * @returns {Function} A function to remove this change listener.
+   */
+  function subscribe(listener) {
+    listeners.push(listener);
+    var isSubscribed = true;
+
+    return function unsubscribe() {
+      if (!isSubscribed) {
+        return;
+      }
+
+      isSubscribed = false;
+      var index = listeners.indexOf(listener);
+      listeners.splice(index, 1);
+    };
+  }
+
+  /**
+   * Dispatches an action. It is the only way to trigger a state change.
+   *
+   * The `reducer` function, used to create the store, will be called with the
+   * current state tree and the given `action`. Its return value will
+   * be considered the **next** state of the tree, and the change listeners
+   * will be notified.
+   *
+   * The base implementation only supports plain object actions. If you want to
+   * dispatch a Promise, an Observable, a thunk, or something else, you need to
+   * wrap your store creating function into the corresponding middleware. For
+   * example, see the documentation for the `redux-thunk` package. Even the
+   * middleware will eventually dispatch plain object actions using this method.
+   *
+   * @param {Object} action A plain object representing “what changed”. It is
+   * a good idea to keep actions serializable so you can record and replay user
+   * sessions, or use the time travelling `redux-devtools`. An action must have
+   * a `type` property which may not be `undefined`. It is a good idea to use
+   * string constants for action types.
+   *
+   * @returns {Object} For convenience, the same action object you dispatched.
+   *
+   * Note that, if you use a custom middleware, it may wrap `dispatch()` to
+   * return something else (for example, a Promise you can await).
+   */
+  function dispatch(action) {
+    if (!_utilsIsPlainObject2['default'](action)) {
+      throw new Error('Actions must be plain objects. ' + 'Use custom middleware for async actions.');
+    }
+
+    if (typeof action.type === 'undefined') {
+      throw new Error('Actions may not have an undefined "type" property. ' + 'Have you misspelled a constant?');
+    }
+
+    if (isDispatching) {
+      throw new Error('Reducers may not dispatch actions.');
+    }
+
+    try {
+      isDispatching = true;
+      currentState = currentReducer(currentState, action);
+    } finally {
+      isDispatching = false;
+    }
+
+    listeners.slice().forEach(function (listener) {
+      return listener();
+    });
+    return action;
+  }
+
+  /**
+   * Replaces the reducer currently used by the store to calculate the state.
+   *
+   * You might need this if your app implements code splitting and you want to
+   * load some of the reducers dynamically. You might also need this if you
+   * implement a hot reloading mechanism for Redux.
+   *
+   * @param {Function} nextReducer The reducer for the store to use instead.
+   * @returns {void}
+   */
+  function replaceReducer(nextReducer) {
+    currentReducer = nextReducer;
+    dispatch({ type: ActionTypes.INIT });
+  }
+
+  // When a store is created, an "INIT" action is dispatched so that every
+  // reducer returns their initial state. This effectively populates
+  // the initial state tree.
+  dispatch({ type: ActionTypes.INIT });
+
+  return {
+    dispatch: dispatch,
+    subscribe: subscribe,
+    getState: getState,
+    replaceReducer: replaceReducer
+  };
+}
+},{"./utils/isPlainObject":103}],103:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+exports['default'] = isPlainObject;
+var fnToString = function fnToString(fn) {
+  return Function.prototype.toString.call(fn);
+};
+
+/**
+ * @param {any} obj The object to inspect.
+ * @returns {boolean} True if the argument appears to be a plain object.
+ */
+
+function isPlainObject(obj) {
+  if (!obj || typeof obj !== 'object') {
+    return false;
+  }
+
+  var proto = typeof obj.constructor === 'function' ? Object.getPrototypeOf(obj) : Object.prototype;
+
+  if (proto === null) {
+    return true;
+  }
+
+  var constructor = proto.constructor;
+
+  return typeof constructor === 'function' && constructor instanceof constructor && fnToString(constructor) === fnToString(Object);
+}
+
+module.exports = exports['default'];
+},{}],104:[function(require,module,exports){
+(function (process){
+/**
+ * Copyright 2013-2015, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ *
+ * @providesModule invariant
+ */
+
+'use strict';
+
+/**
+ * Use invariant() to assert state which your program assumes to be true.
+ *
+ * Provide sprintf-style format (only %s is supported) and arguments
+ * to provide information about what broke and what you were
+ * expecting.
+ *
+ * The invariant message will be stripped in production, but the invariant
+ * will remain to ensure logic does not differ in production.
+ */
+
+var invariant = function(condition, format, a, b, c, d, e, f) {
+  if (process.env.NODE_ENV !== 'production') {
+    if (format === undefined) {
+      throw new Error('invariant requires an error message argument');
+    }
+  }
+
+  if (!condition) {
+    var error;
+    if (format === undefined) {
+      error = new Error(
+        'Minified exception occurred; use the non-minified dev environment ' +
+        'for the full error message and additional helpful warnings.'
+      );
+    } else {
+      var args = [a, b, c, d, e, f];
+      var argIndex = 0;
+      error = new Error(
+        'Invariant Violation: ' +
+        format.replace(/%s/g, function() { return args[argIndex++]; })
+      );
+    }
+
+    error.framesToPop = 1; // we don't care about invariant's own frame
+    throw error;
+  }
+};
+
+module.exports = invariant;
+
+}).call(this,require("oMfpAn"))
+},{"oMfpAn":2}],105:[function(require,module,exports){
+var baseIndexOf = require('../internal/baseIndexOf'),
+    cacheIndexOf = require('../internal/cacheIndexOf'),
+    createCache = require('../internal/createCache'),
+    isArrayLike = require('../internal/isArrayLike'),
+    restParam = require('../function/restParam');
+
+/**
+ * Creates an array of unique values that are included in all of the provided
+ * arrays using [`SameValueZero`](http://ecma-international.org/ecma-262/6.0/#sec-samevaluezero)
+ * for equality comparisons.
+ *
+ * @static
+ * @memberOf _
+ * @category Array
+ * @param {...Array} [arrays] The arrays to inspect.
+ * @returns {Array} Returns the new array of shared values.
+ * @example
+ * _.intersection([1, 2], [4, 2], [2, 1]);
+ * // => [2]
+ */
+var intersection = restParam(function(arrays) {
+  var othLength = arrays.length,
+      othIndex = othLength,
+      caches = Array(length),
+      indexOf = baseIndexOf,
+      isCommon = true,
+      result = [];
+
+  while (othIndex--) {
+    var value = arrays[othIndex] = isArrayLike(value = arrays[othIndex]) ? value : [];
+    caches[othIndex] = (isCommon && value.length >= 120) ? createCache(othIndex && value) : null;
+  }
+  var array = arrays[0],
+      index = -1,
+      length = array ? array.length : 0,
+      seen = caches[0];
+
+  outer:
+  while (++index < length) {
+    value = array[index];
+    if ((seen ? cacheIndexOf(seen, value) : indexOf(result, value, 0)) < 0) {
+      var othIndex = othLength;
+      while (--othIndex) {
+        var cache = caches[othIndex];
+        if ((cache ? cacheIndexOf(cache, value) : indexOf(arrays[othIndex], value, 0)) < 0) {
+          continue outer;
+        }
+      }
+      if (seen) {
+        seen.push(value);
+      }
+      result.push(value);
+    }
+  }
+  return result;
+});
+
+module.exports = intersection;
+
+},{"../function/restParam":108,"../internal/baseIndexOf":114,"../internal/cacheIndexOf":117,"../internal/createCache":120,"../internal/isArrayLike":124}],106:[function(require,module,exports){
+module.exports=require(16)
+},{"../function/restParam":108,"../internal/baseDifference":111,"../internal/isArrayLike":124}],107:[function(require,module,exports){
+var arrayPush = require('../internal/arrayPush'),
+    baseDifference = require('../internal/baseDifference'),
+    baseUniq = require('../internal/baseUniq'),
+    isArrayLike = require('../internal/isArrayLike');
+
+/**
+ * Creates an array of unique values that is the [symmetric difference](https://en.wikipedia.org/wiki/Symmetric_difference)
+ * of the provided arrays.
+ *
+ * @static
+ * @memberOf _
+ * @category Array
+ * @param {...Array} [arrays] The arrays to inspect.
+ * @returns {Array} Returns the new array of values.
+ * @example
+ *
+ * _.xor([1, 2], [4, 2]);
+ * // => [1, 4]
+ */
+function xor() {
+  var index = -1,
+      length = arguments.length;
+
+  while (++index < length) {
+    var array = arguments[index];
+    if (isArrayLike(array)) {
+      var result = result
+        ? arrayPush(baseDifference(result, array), baseDifference(array, result))
+        : array;
+    }
+  }
+  return result ? baseUniq(result) : [];
+}
+
+module.exports = xor;
+
+},{"../internal/arrayPush":110,"../internal/baseDifference":111,"../internal/baseUniq":116,"../internal/isArrayLike":124}],108:[function(require,module,exports){
+module.exports=require(18)
+},{}],109:[function(require,module,exports){
+module.exports=require(20)
+},{"./cachePush":118,"./getNative":122}],110:[function(require,module,exports){
+module.exports=require(21)
+},{}],111:[function(require,module,exports){
+module.exports=require(26)
+},{"./baseIndexOf":114,"./cacheIndexOf":117,"./createCache":120}],112:[function(require,module,exports){
+var createBaseFor = require('./createBaseFor');
+
+/**
+ * The base implementation of `baseForIn` and `baseForOwn` which iterates
+ * over `object` properties returned by `keysFunc` invoking `iteratee` for
+ * each property. Iteratee functions may exit iteration early by explicitly
+ * returning `false`.
+ *
+ * @private
+ * @param {Object} object The object to iterate over.
+ * @param {Function} iteratee The function invoked per iteration.
+ * @param {Function} keysFunc The function to get the keys of `object`.
+ * @returns {Object} Returns `object`.
+ */
+var baseFor = createBaseFor();
+
+module.exports = baseFor;
+
+},{"./createBaseFor":119}],113:[function(require,module,exports){
+var baseFor = require('./baseFor'),
+    keysIn = require('../object/keysIn');
+
+/**
+ * The base implementation of `_.forIn` without support for callback
+ * shorthands and `this` binding.
+ *
+ * @private
+ * @param {Object} object The object to iterate over.
+ * @param {Function} iteratee The function invoked per iteration.
+ * @returns {Object} Returns `object`.
+ */
+function baseForIn(object, iteratee) {
+  return baseFor(object, iteratee, keysIn);
+}
+
+module.exports = baseForIn;
+
+},{"../object/keysIn":135,"./baseFor":112}],114:[function(require,module,exports){
+module.exports=require(28)
+},{"./indexOfNaN":123}],115:[function(require,module,exports){
+module.exports=require(29)
+},{}],116:[function(require,module,exports){
+module.exports=require(30)
+},{"./baseIndexOf":114,"./cacheIndexOf":117,"./createCache":120}],117:[function(require,module,exports){
+module.exports=require(32)
+},{"../lang/isObject":133}],118:[function(require,module,exports){
+module.exports=require(33)
+},{"../lang/isObject":133}],119:[function(require,module,exports){
+var toObject = require('./toObject');
+
+/**
+ * Creates a base function for `_.forIn` or `_.forInRight`.
+ *
+ * @private
+ * @param {boolean} [fromRight] Specify iterating from right to left.
+ * @returns {Function} Returns the new base function.
+ */
+function createBaseFor(fromRight) {
+  return function(object, iteratee, keysFunc) {
+    var iterable = toObject(object),
+        props = keysFunc(object),
+        length = props.length,
+        index = fromRight ? length : -1;
+
+    while ((fromRight ? index-- : ++index < length)) {
+      var key = props[index];
+      if (iteratee(iterable[key], key, iterable) === false) {
+        break;
+      }
+    }
+    return object;
+  };
+}
+
+module.exports = createBaseFor;
+
+},{"./toObject":128}],120:[function(require,module,exports){
+module.exports=require(35)
+},{"./SetCache":109,"./getNative":122}],121:[function(require,module,exports){
+module.exports=require(37)
+},{"./baseProperty":115}],122:[function(require,module,exports){
+module.exports=require(38)
+},{"../lang/isNative":132}],123:[function(require,module,exports){
+module.exports=require(39)
+},{}],124:[function(require,module,exports){
+module.exports=require(40)
+},{"./getLength":121,"./isLength":126}],125:[function(require,module,exports){
+module.exports=require(41)
+},{}],126:[function(require,module,exports){
+module.exports=require(43)
+},{}],127:[function(require,module,exports){
+module.exports=require(44)
+},{}],128:[function(require,module,exports){
+var isObject = require('../lang/isObject');
+
+/**
+ * Converts `value` to an object if it's not one.
+ *
+ * @private
+ * @param {*} value The value to process.
+ * @returns {Object} Returns the object.
+ */
+function toObject(value) {
+  return isObject(value) ? value : Object(value);
+}
+
+module.exports = toObject;
+
+},{"../lang/isObject":133}],129:[function(require,module,exports){
+module.exports=require(50)
+},{"../internal/isArrayLike":124,"../internal/isObjectLike":127}],130:[function(require,module,exports){
+module.exports=require(51)
+},{"../internal/getNative":122,"../internal/isLength":126,"../internal/isObjectLike":127}],131:[function(require,module,exports){
+module.exports=require(52)
+},{"./isObject":133}],132:[function(require,module,exports){
+module.exports=require(53)
+},{"../internal/isObjectLike":127,"./isFunction":131}],133:[function(require,module,exports){
+module.exports=require(54)
+},{}],134:[function(require,module,exports){
+var baseForIn = require('../internal/baseForIn'),
+    isArguments = require('./isArguments'),
+    isObjectLike = require('../internal/isObjectLike');
+
+/** `Object#toString` result references. */
+var objectTag = '[object Object]';
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Used to resolve the [`toStringTag`](http://ecma-international.org/ecma-262/6.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objToString = objectProto.toString;
+
+/**
+ * Checks if `value` is a plain object, that is, an object created by the
+ * `Object` constructor or one with a `[[Prototype]]` of `null`.
+ *
+ * **Note:** This method assumes objects created by the `Object` constructor
+ * have no inherited enumerable properties.
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a plain object, else `false`.
+ * @example
+ *
+ * function Foo() {
+ *   this.a = 1;
+ * }
+ *
+ * _.isPlainObject(new Foo);
+ * // => false
+ *
+ * _.isPlainObject([1, 2, 3]);
+ * // => false
+ *
+ * _.isPlainObject({ 'x': 0, 'y': 0 });
+ * // => true
+ *
+ * _.isPlainObject(Object.create(null));
+ * // => true
+ */
+function isPlainObject(value) {
+  var Ctor;
+
+  // Exit early for non `Object` objects.
+  if (!(isObjectLike(value) && objToString.call(value) == objectTag && !isArguments(value)) ||
+      (!hasOwnProperty.call(value, 'constructor') && (Ctor = value.constructor, typeof Ctor == 'function' && !(Ctor instanceof Ctor)))) {
+    return false;
+  }
+  // IE < 9 iterates inherited properties before own properties. If the first
+  // iterated property is an object's own property then there are no inherited
+  // enumerable properties.
+  var result;
+  // In most environments an object's own properties are iterated before
+  // its inherited properties. If the last iterated property is an object's
+  // own property then there are no inherited enumerable properties.
+  baseForIn(value, function(subValue, key) {
+    result = key;
+  });
+  return result === undefined || hasOwnProperty.call(value, result);
+}
+
+module.exports = isPlainObject;
+
+},{"../internal/baseForIn":113,"../internal/isObjectLike":127,"./isArguments":129}],135:[function(require,module,exports){
+module.exports=require(58)
+},{"../internal/isIndex":125,"../internal/isLength":126,"../lang/isArguments":129,"../lang/isArray":130,"../lang/isObject":133}],136:[function(require,module,exports){
+/**
+ * A no-operation function that returns `undefined` regardless of the
+ * arguments it receives.
+ *
+ * @static
+ * @memberOf _
+ * @category Utility
+ * @example
+ *
+ * var object = { 'user': 'fred' };
+ *
+ * _.noop(object) === undefined;
+ * // => true
+ */
+function noop() {
+  // No operation performed.
+}
+
+module.exports = noop;
+
+},{}],137:[function(require,module,exports){
+'use strict';
+
 module.exports = require('react/lib/ReactDOM');
 
-},{"react/lib/ReactDOM":40}],6:[function(require,module,exports){
+},{"react/lib/ReactDOM":172}],138:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -464,7 +6249,7 @@ var AutoFocusUtils = {
 };
 
 module.exports = AutoFocusUtils;
-},{"./ReactMount":70,"./findDOMNode":112,"fbjs/lib/focusNode":142}],7:[function(require,module,exports){
+},{"./ReactMount":202,"./findDOMNode":244,"fbjs/lib/focusNode":274}],139:[function(require,module,exports){
 /**
  * Copyright 2013-2015 Facebook, Inc.
  * All rights reserved.
@@ -870,7 +6655,7 @@ var BeforeInputEventPlugin = {
 };
 
 module.exports = BeforeInputEventPlugin;
-},{"./EventConstants":19,"./EventPropagators":23,"./FallbackCompositionState":24,"./SyntheticCompositionEvent":95,"./SyntheticInputEvent":99,"fbjs/lib/ExecutionEnvironment":134,"fbjs/lib/keyOf":152}],8:[function(require,module,exports){
+},{"./EventConstants":151,"./EventPropagators":155,"./FallbackCompositionState":156,"./SyntheticCompositionEvent":227,"./SyntheticInputEvent":231,"fbjs/lib/ExecutionEnvironment":266,"fbjs/lib/keyOf":284}],140:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -1010,7 +6795,7 @@ var CSSProperty = {
 };
 
 module.exports = CSSProperty;
-},{}],9:[function(require,module,exports){
+},{}],141:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -1188,7 +6973,7 @@ ReactPerf.measureMethods(CSSPropertyOperations, 'CSSPropertyOperations', {
 
 module.exports = CSSPropertyOperations;
 }).call(this,require("oMfpAn"))
-},{"./CSSProperty":8,"./ReactPerf":76,"./dangerousStyleValue":109,"fbjs/lib/ExecutionEnvironment":134,"fbjs/lib/camelizeStyleName":136,"fbjs/lib/hyphenateStyleName":147,"fbjs/lib/memoizeStringOnly":154,"fbjs/lib/warning":159,"oMfpAn":2}],10:[function(require,module,exports){
+},{"./CSSProperty":140,"./ReactPerf":208,"./dangerousStyleValue":241,"fbjs/lib/ExecutionEnvironment":266,"fbjs/lib/camelizeStyleName":268,"fbjs/lib/hyphenateStyleName":279,"fbjs/lib/memoizeStringOnly":286,"fbjs/lib/warning":291,"oMfpAn":2}],142:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -1284,7 +7069,7 @@ PooledClass.addPoolingTo(CallbackQueue);
 
 module.exports = CallbackQueue;
 }).call(this,require("oMfpAn"))
-},{"./Object.assign":27,"./PooledClass":28,"fbjs/lib/invariant":148,"oMfpAn":2}],11:[function(require,module,exports){
+},{"./Object.assign":159,"./PooledClass":160,"fbjs/lib/invariant":280,"oMfpAn":2}],143:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -1604,7 +7389,7 @@ var ChangeEventPlugin = {
 };
 
 module.exports = ChangeEventPlugin;
-},{"./EventConstants":19,"./EventPluginHub":20,"./EventPropagators":23,"./ReactUpdates":88,"./SyntheticEvent":97,"./getEventTarget":118,"./isEventSupported":123,"./isTextInputElement":124,"fbjs/lib/ExecutionEnvironment":134,"fbjs/lib/keyOf":152}],12:[function(require,module,exports){
+},{"./EventConstants":151,"./EventPluginHub":152,"./EventPropagators":155,"./ReactUpdates":220,"./SyntheticEvent":229,"./getEventTarget":250,"./isEventSupported":255,"./isTextInputElement":256,"fbjs/lib/ExecutionEnvironment":266,"fbjs/lib/keyOf":284}],144:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -1628,7 +7413,7 @@ var ClientReactRootIndex = {
 };
 
 module.exports = ClientReactRootIndex;
-},{}],13:[function(require,module,exports){
+},{}],145:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -1760,7 +7545,7 @@ ReactPerf.measureMethods(DOMChildrenOperations, 'DOMChildrenOperations', {
 
 module.exports = DOMChildrenOperations;
 }).call(this,require("oMfpAn"))
-},{"./Danger":16,"./ReactMultiChildUpdateTypes":72,"./ReactPerf":76,"./setInnerHTML":128,"./setTextContent":129,"fbjs/lib/invariant":148,"oMfpAn":2}],14:[function(require,module,exports){
+},{"./Danger":148,"./ReactMultiChildUpdateTypes":204,"./ReactPerf":208,"./setInnerHTML":260,"./setTextContent":261,"fbjs/lib/invariant":280,"oMfpAn":2}],146:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -1997,7 +7782,7 @@ var DOMProperty = {
 
 module.exports = DOMProperty;
 }).call(this,require("oMfpAn"))
-},{"fbjs/lib/invariant":148,"oMfpAn":2}],15:[function(require,module,exports){
+},{"fbjs/lib/invariant":280,"oMfpAn":2}],147:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -2225,7 +8010,7 @@ ReactPerf.measureMethods(DOMPropertyOperations, 'DOMPropertyOperations', {
 
 module.exports = DOMPropertyOperations;
 }).call(this,require("oMfpAn"))
-},{"./DOMProperty":14,"./ReactPerf":76,"./quoteAttributeValueForBrowser":126,"fbjs/lib/warning":159,"oMfpAn":2}],16:[function(require,module,exports){
+},{"./DOMProperty":146,"./ReactPerf":208,"./quoteAttributeValueForBrowser":258,"fbjs/lib/warning":291,"oMfpAn":2}],148:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -2373,7 +8158,7 @@ var Danger = {
 
 module.exports = Danger;
 }).call(this,require("oMfpAn"))
-},{"fbjs/lib/ExecutionEnvironment":134,"fbjs/lib/createNodesFromMarkup":139,"fbjs/lib/emptyFunction":140,"fbjs/lib/getMarkupWrap":144,"fbjs/lib/invariant":148,"oMfpAn":2}],17:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":266,"fbjs/lib/createNodesFromMarkup":271,"fbjs/lib/emptyFunction":272,"fbjs/lib/getMarkupWrap":276,"fbjs/lib/invariant":280,"oMfpAn":2}],149:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -2401,7 +8186,7 @@ var keyOf = require('fbjs/lib/keyOf');
 var DefaultEventPluginOrder = [keyOf({ ResponderEventPlugin: null }), keyOf({ SimpleEventPlugin: null }), keyOf({ TapEventPlugin: null }), keyOf({ EnterLeaveEventPlugin: null }), keyOf({ ChangeEventPlugin: null }), keyOf({ SelectEventPlugin: null }), keyOf({ BeforeInputEventPlugin: null })];
 
 module.exports = DefaultEventPluginOrder;
-},{"fbjs/lib/keyOf":152}],18:[function(require,module,exports){
+},{"fbjs/lib/keyOf":284}],150:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -2526,7 +8311,7 @@ var EnterLeaveEventPlugin = {
 };
 
 module.exports = EnterLeaveEventPlugin;
-},{"./EventConstants":19,"./EventPropagators":23,"./ReactMount":70,"./SyntheticMouseEvent":101,"fbjs/lib/keyOf":152}],19:[function(require,module,exports){
+},{"./EventConstants":151,"./EventPropagators":155,"./ReactMount":202,"./SyntheticMouseEvent":233,"fbjs/lib/keyOf":284}],151:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -2619,7 +8404,7 @@ var EventConstants = {
 };
 
 module.exports = EventConstants;
-},{"fbjs/lib/keyMirror":151}],20:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":283}],152:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -2901,7 +8686,7 @@ var EventPluginHub = {
 
 module.exports = EventPluginHub;
 }).call(this,require("oMfpAn"))
-},{"./EventPluginRegistry":21,"./EventPluginUtils":22,"./ReactErrorUtils":61,"./accumulateInto":107,"./forEachAccumulated":114,"fbjs/lib/invariant":148,"fbjs/lib/warning":159,"oMfpAn":2}],21:[function(require,module,exports){
+},{"./EventPluginRegistry":153,"./EventPluginUtils":154,"./ReactErrorUtils":193,"./accumulateInto":239,"./forEachAccumulated":246,"fbjs/lib/invariant":280,"fbjs/lib/warning":291,"oMfpAn":2}],153:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -3124,7 +8909,7 @@ var EventPluginRegistry = {
 
 module.exports = EventPluginRegistry;
 }).call(this,require("oMfpAn"))
-},{"fbjs/lib/invariant":148,"oMfpAn":2}],22:[function(require,module,exports){
+},{"fbjs/lib/invariant":280,"oMfpAn":2}],154:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -3329,7 +9114,7 @@ var EventPluginUtils = {
 
 module.exports = EventPluginUtils;
 }).call(this,require("oMfpAn"))
-},{"./EventConstants":19,"./ReactErrorUtils":61,"fbjs/lib/invariant":148,"fbjs/lib/warning":159,"oMfpAn":2}],23:[function(require,module,exports){
+},{"./EventConstants":151,"./ReactErrorUtils":193,"fbjs/lib/invariant":280,"fbjs/lib/warning":291,"oMfpAn":2}],155:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -3467,7 +9252,7 @@ var EventPropagators = {
 
 module.exports = EventPropagators;
 }).call(this,require("oMfpAn"))
-},{"./EventConstants":19,"./EventPluginHub":20,"./accumulateInto":107,"./forEachAccumulated":114,"fbjs/lib/warning":159,"oMfpAn":2}],24:[function(require,module,exports){
+},{"./EventConstants":151,"./EventPluginHub":152,"./accumulateInto":239,"./forEachAccumulated":246,"fbjs/lib/warning":291,"oMfpAn":2}],156:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -3563,7 +9348,7 @@ assign(FallbackCompositionState.prototype, {
 PooledClass.addPoolingTo(FallbackCompositionState);
 
 module.exports = FallbackCompositionState;
-},{"./Object.assign":27,"./PooledClass":28,"./getTextContentAccessor":121}],25:[function(require,module,exports){
+},{"./Object.assign":159,"./PooledClass":160,"./getTextContentAccessor":253}],157:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -3788,7 +9573,7 @@ var HTMLDOMPropertyConfig = {
 };
 
 module.exports = HTMLDOMPropertyConfig;
-},{"./DOMProperty":14,"fbjs/lib/ExecutionEnvironment":134}],26:[function(require,module,exports){
+},{"./DOMProperty":146,"fbjs/lib/ExecutionEnvironment":266}],158:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -3925,7 +9710,7 @@ var LinkedValueUtils = {
 
 module.exports = LinkedValueUtils;
 }).call(this,require("oMfpAn"))
-},{"./ReactPropTypeLocations":78,"./ReactPropTypes":79,"fbjs/lib/invariant":148,"fbjs/lib/warning":159,"oMfpAn":2}],27:[function(require,module,exports){
+},{"./ReactPropTypeLocations":210,"./ReactPropTypes":211,"fbjs/lib/invariant":280,"fbjs/lib/warning":291,"oMfpAn":2}],159:[function(require,module,exports){
 /**
  * Copyright 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -3973,7 +9758,7 @@ function assign(target, sources) {
 }
 
 module.exports = assign;
-},{}],28:[function(require,module,exports){
+},{}],160:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -4095,7 +9880,7 @@ var PooledClass = {
 
 module.exports = PooledClass;
 }).call(this,require("oMfpAn"))
-},{"fbjs/lib/invariant":148,"oMfpAn":2}],29:[function(require,module,exports){
+},{"fbjs/lib/invariant":280,"oMfpAn":2}],161:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -4135,7 +9920,7 @@ assign(React, {
 React.__SECRET_DOM_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = ReactDOM;
 
 module.exports = React;
-},{"./Object.assign":27,"./ReactDOM":40,"./ReactDOMServer":50,"./ReactIsomorphic":68,"./deprecated":110}],30:[function(require,module,exports){
+},{"./Object.assign":159,"./ReactDOM":172,"./ReactDOMServer":182,"./ReactIsomorphic":200,"./deprecated":242}],162:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -4174,7 +9959,7 @@ var ReactBrowserComponentMixin = {
 
 module.exports = ReactBrowserComponentMixin;
 }).call(this,require("oMfpAn"))
-},{"./ReactInstanceMap":67,"./findDOMNode":112,"fbjs/lib/warning":159,"oMfpAn":2}],31:[function(require,module,exports){
+},{"./ReactInstanceMap":199,"./findDOMNode":244,"fbjs/lib/warning":291,"oMfpAn":2}],163:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -4499,7 +10284,7 @@ ReactPerf.measureMethods(ReactBrowserEventEmitter, 'ReactBrowserEventEmitter', {
 });
 
 module.exports = ReactBrowserEventEmitter;
-},{"./EventConstants":19,"./EventPluginHub":20,"./EventPluginRegistry":21,"./Object.assign":27,"./ReactEventEmitterMixin":62,"./ReactPerf":76,"./ViewportMetrics":106,"./isEventSupported":123}],32:[function(require,module,exports){
+},{"./EventConstants":151,"./EventPluginHub":152,"./EventPluginRegistry":153,"./Object.assign":159,"./ReactEventEmitterMixin":194,"./ReactPerf":208,"./ViewportMetrics":238,"./isEventSupported":255}],164:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -4624,7 +10409,7 @@ var ReactChildReconciler = {
 
 module.exports = ReactChildReconciler;
 }).call(this,require("oMfpAn"))
-},{"./ReactReconciler":81,"./instantiateReactComponent":122,"./shouldUpdateReactComponent":130,"./traverseAllChildren":131,"fbjs/lib/warning":159,"oMfpAn":2}],33:[function(require,module,exports){
+},{"./ReactReconciler":213,"./instantiateReactComponent":254,"./shouldUpdateReactComponent":262,"./traverseAllChildren":263,"fbjs/lib/warning":291,"oMfpAn":2}],165:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -4807,7 +10592,7 @@ var ReactChildren = {
 };
 
 module.exports = ReactChildren;
-},{"./PooledClass":28,"./ReactElement":57,"./traverseAllChildren":131,"fbjs/lib/emptyFunction":140}],34:[function(require,module,exports){
+},{"./PooledClass":160,"./ReactElement":189,"./traverseAllChildren":263,"fbjs/lib/emptyFunction":272}],166:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -5581,7 +11366,7 @@ var ReactClass = {
 
 module.exports = ReactClass;
 }).call(this,require("oMfpAn"))
-},{"./Object.assign":27,"./ReactComponent":35,"./ReactElement":57,"./ReactNoopUpdateQueue":74,"./ReactPropTypeLocationNames":77,"./ReactPropTypeLocations":78,"fbjs/lib/emptyObject":141,"fbjs/lib/invariant":148,"fbjs/lib/keyMirror":151,"fbjs/lib/keyOf":152,"fbjs/lib/warning":159,"oMfpAn":2}],35:[function(require,module,exports){
+},{"./Object.assign":159,"./ReactComponent":167,"./ReactElement":189,"./ReactNoopUpdateQueue":206,"./ReactPropTypeLocationNames":209,"./ReactPropTypeLocations":210,"fbjs/lib/emptyObject":273,"fbjs/lib/invariant":280,"fbjs/lib/keyMirror":283,"fbjs/lib/keyOf":284,"fbjs/lib/warning":291,"oMfpAn":2}],167:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -5707,7 +11492,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactComponent;
 }).call(this,require("oMfpAn"))
-},{"./ReactNoopUpdateQueue":74,"fbjs/lib/emptyObject":141,"fbjs/lib/invariant":148,"fbjs/lib/warning":159,"oMfpAn":2}],36:[function(require,module,exports){
+},{"./ReactNoopUpdateQueue":206,"fbjs/lib/emptyObject":273,"fbjs/lib/invariant":280,"fbjs/lib/warning":291,"oMfpAn":2}],168:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -5749,7 +11534,7 @@ var ReactComponentBrowserEnvironment = {
 };
 
 module.exports = ReactComponentBrowserEnvironment;
-},{"./ReactDOMIDOperations":45,"./ReactMount":70}],37:[function(require,module,exports){
+},{"./ReactDOMIDOperations":177,"./ReactMount":202}],169:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -5803,7 +11588,7 @@ var ReactComponentEnvironment = {
 
 module.exports = ReactComponentEnvironment;
 }).call(this,require("oMfpAn"))
-},{"fbjs/lib/invariant":148,"oMfpAn":2}],38:[function(require,module,exports){
+},{"fbjs/lib/invariant":280,"oMfpAn":2}],170:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -6500,7 +12285,7 @@ var ReactCompositeComponent = {
 
 module.exports = ReactCompositeComponent;
 }).call(this,require("oMfpAn"))
-},{"./Object.assign":27,"./ReactComponentEnvironment":37,"./ReactCurrentOwner":39,"./ReactElement":57,"./ReactInstanceMap":67,"./ReactPerf":76,"./ReactPropTypeLocationNames":77,"./ReactPropTypeLocations":78,"./ReactReconciler":81,"./ReactUpdateQueue":87,"./shouldUpdateReactComponent":130,"fbjs/lib/emptyObject":141,"fbjs/lib/invariant":148,"fbjs/lib/warning":159,"oMfpAn":2}],39:[function(require,module,exports){
+},{"./Object.assign":159,"./ReactComponentEnvironment":169,"./ReactCurrentOwner":171,"./ReactElement":189,"./ReactInstanceMap":199,"./ReactPerf":208,"./ReactPropTypeLocationNames":209,"./ReactPropTypeLocations":210,"./ReactReconciler":213,"./ReactUpdateQueue":219,"./shouldUpdateReactComponent":262,"fbjs/lib/emptyObject":273,"fbjs/lib/invariant":280,"fbjs/lib/warning":291,"oMfpAn":2}],171:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -6531,7 +12316,7 @@ var ReactCurrentOwner = {
 };
 
 module.exports = ReactCurrentOwner;
-},{}],40:[function(require,module,exports){
+},{}],172:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -6626,7 +12411,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = React;
 }).call(this,require("oMfpAn"))
-},{"./ReactCurrentOwner":39,"./ReactDOMTextComponent":51,"./ReactDefaultInjection":54,"./ReactInstanceHandles":66,"./ReactMount":70,"./ReactPerf":76,"./ReactReconciler":81,"./ReactUpdates":88,"./ReactVersion":89,"./findDOMNode":112,"./renderSubtreeIntoContainer":127,"fbjs/lib/ExecutionEnvironment":134,"fbjs/lib/warning":159,"oMfpAn":2}],41:[function(require,module,exports){
+},{"./ReactCurrentOwner":171,"./ReactDOMTextComponent":183,"./ReactDefaultInjection":186,"./ReactInstanceHandles":198,"./ReactMount":202,"./ReactPerf":208,"./ReactReconciler":213,"./ReactUpdates":220,"./ReactVersion":221,"./findDOMNode":244,"./renderSubtreeIntoContainer":259,"fbjs/lib/ExecutionEnvironment":266,"fbjs/lib/warning":291,"oMfpAn":2}],173:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -6677,7 +12462,7 @@ var ReactDOMButton = {
 };
 
 module.exports = ReactDOMButton;
-},{}],42:[function(require,module,exports){
+},{}],174:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -7640,7 +13425,7 @@ assign(ReactDOMComponent.prototype, ReactDOMComponent.Mixin, ReactMultiChild.Mix
 
 module.exports = ReactDOMComponent;
 }).call(this,require("oMfpAn"))
-},{"./AutoFocusUtils":6,"./CSSPropertyOperations":9,"./DOMProperty":14,"./DOMPropertyOperations":15,"./EventConstants":19,"./Object.assign":27,"./ReactBrowserEventEmitter":31,"./ReactComponentBrowserEnvironment":36,"./ReactDOMButton":41,"./ReactDOMInput":46,"./ReactDOMOption":47,"./ReactDOMSelect":48,"./ReactDOMTextarea":52,"./ReactMount":70,"./ReactMultiChild":71,"./ReactPerf":76,"./ReactUpdateQueue":87,"./escapeTextContentForBrowser":111,"./isEventSupported":123,"./setInnerHTML":128,"./setTextContent":129,"./validateDOMNesting":132,"fbjs/lib/invariant":148,"fbjs/lib/keyOf":152,"fbjs/lib/shallowEqual":157,"fbjs/lib/warning":159,"oMfpAn":2}],43:[function(require,module,exports){
+},{"./AutoFocusUtils":138,"./CSSPropertyOperations":141,"./DOMProperty":146,"./DOMPropertyOperations":147,"./EventConstants":151,"./Object.assign":159,"./ReactBrowserEventEmitter":163,"./ReactComponentBrowserEnvironment":168,"./ReactDOMButton":173,"./ReactDOMInput":178,"./ReactDOMOption":179,"./ReactDOMSelect":180,"./ReactDOMTextarea":184,"./ReactMount":202,"./ReactMultiChild":203,"./ReactPerf":208,"./ReactUpdateQueue":219,"./escapeTextContentForBrowser":243,"./isEventSupported":255,"./setInnerHTML":260,"./setTextContent":261,"./validateDOMNesting":264,"fbjs/lib/invariant":280,"fbjs/lib/keyOf":284,"fbjs/lib/shallowEqual":289,"fbjs/lib/warning":291,"oMfpAn":2}],175:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -7820,7 +13605,7 @@ var ReactDOMFactories = mapObject({
 
 module.exports = ReactDOMFactories;
 }).call(this,require("oMfpAn"))
-},{"./ReactElement":57,"./ReactElementValidator":58,"fbjs/lib/mapObject":153,"oMfpAn":2}],44:[function(require,module,exports){
+},{"./ReactElement":189,"./ReactElementValidator":190,"fbjs/lib/mapObject":285,"oMfpAn":2}],176:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -7839,7 +13624,7 @@ var ReactDOMFeatureFlags = {
 };
 
 module.exports = ReactDOMFeatureFlags;
-},{}],45:[function(require,module,exports){
+},{}],177:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -7936,7 +13721,7 @@ ReactPerf.measureMethods(ReactDOMIDOperations, 'ReactDOMIDOperations', {
 
 module.exports = ReactDOMIDOperations;
 }).call(this,require("oMfpAn"))
-},{"./DOMChildrenOperations":13,"./DOMPropertyOperations":15,"./ReactMount":70,"./ReactPerf":76,"fbjs/lib/invariant":148,"oMfpAn":2}],46:[function(require,module,exports){
+},{"./DOMChildrenOperations":145,"./DOMPropertyOperations":147,"./ReactMount":202,"./ReactPerf":208,"fbjs/lib/invariant":280,"oMfpAn":2}],178:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -8092,7 +13877,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMInput;
 }).call(this,require("oMfpAn"))
-},{"./LinkedValueUtils":26,"./Object.assign":27,"./ReactDOMIDOperations":45,"./ReactMount":70,"./ReactUpdates":88,"fbjs/lib/invariant":148,"oMfpAn":2}],47:[function(require,module,exports){
+},{"./LinkedValueUtils":158,"./Object.assign":159,"./ReactDOMIDOperations":177,"./ReactMount":202,"./ReactUpdates":220,"fbjs/lib/invariant":280,"oMfpAn":2}],179:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -8181,7 +13966,7 @@ var ReactDOMOption = {
 
 module.exports = ReactDOMOption;
 }).call(this,require("oMfpAn"))
-},{"./Object.assign":27,"./ReactChildren":33,"./ReactDOMSelect":48,"fbjs/lib/warning":159,"oMfpAn":2}],48:[function(require,module,exports){
+},{"./Object.assign":159,"./ReactChildren":165,"./ReactDOMSelect":180,"fbjs/lib/warning":291,"oMfpAn":2}],180:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -8372,7 +14157,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMSelect;
 }).call(this,require("oMfpAn"))
-},{"./LinkedValueUtils":26,"./Object.assign":27,"./ReactMount":70,"./ReactUpdates":88,"fbjs/lib/warning":159,"oMfpAn":2}],49:[function(require,module,exports){
+},{"./LinkedValueUtils":158,"./Object.assign":159,"./ReactMount":202,"./ReactUpdates":220,"fbjs/lib/warning":291,"oMfpAn":2}],181:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -8585,7 +14370,7 @@ var ReactDOMSelection = {
 };
 
 module.exports = ReactDOMSelection;
-},{"./getNodeForCharacterOffset":120,"./getTextContentAccessor":121,"fbjs/lib/ExecutionEnvironment":134}],50:[function(require,module,exports){
+},{"./getNodeForCharacterOffset":252,"./getTextContentAccessor":253,"fbjs/lib/ExecutionEnvironment":266}],182:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -8612,7 +14397,7 @@ var ReactDOMServer = {
 };
 
 module.exports = ReactDOMServer;
-},{"./ReactDefaultInjection":54,"./ReactServerRendering":85,"./ReactVersion":89}],51:[function(require,module,exports){
+},{"./ReactDefaultInjection":186,"./ReactServerRendering":217,"./ReactVersion":221}],183:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -8742,7 +14527,7 @@ assign(ReactDOMTextComponent.prototype, {
 
 module.exports = ReactDOMTextComponent;
 }).call(this,require("oMfpAn"))
-},{"./DOMChildrenOperations":13,"./DOMPropertyOperations":15,"./Object.assign":27,"./ReactComponentBrowserEnvironment":36,"./ReactMount":70,"./escapeTextContentForBrowser":111,"./setTextContent":129,"./validateDOMNesting":132,"oMfpAn":2}],52:[function(require,module,exports){
+},{"./DOMChildrenOperations":145,"./DOMPropertyOperations":147,"./Object.assign":159,"./ReactComponentBrowserEnvironment":168,"./ReactMount":202,"./escapeTextContentForBrowser":243,"./setTextContent":261,"./validateDOMNesting":264,"oMfpAn":2}],184:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -8858,7 +14643,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMTextarea;
 }).call(this,require("oMfpAn"))
-},{"./LinkedValueUtils":26,"./Object.assign":27,"./ReactDOMIDOperations":45,"./ReactUpdates":88,"fbjs/lib/invariant":148,"fbjs/lib/warning":159,"oMfpAn":2}],53:[function(require,module,exports){
+},{"./LinkedValueUtils":158,"./Object.assign":159,"./ReactDOMIDOperations":177,"./ReactUpdates":220,"fbjs/lib/invariant":280,"fbjs/lib/warning":291,"oMfpAn":2}],185:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -8926,7 +14711,7 @@ var ReactDefaultBatchingStrategy = {
 };
 
 module.exports = ReactDefaultBatchingStrategy;
-},{"./Object.assign":27,"./ReactUpdates":88,"./Transaction":105,"fbjs/lib/emptyFunction":140}],54:[function(require,module,exports){
+},{"./Object.assign":159,"./ReactUpdates":220,"./Transaction":237,"fbjs/lib/emptyFunction":272}],186:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -9026,7 +14811,7 @@ module.exports = {
   inject: inject
 };
 }).call(this,require("oMfpAn"))
-},{"./BeforeInputEventPlugin":7,"./ChangeEventPlugin":11,"./ClientReactRootIndex":12,"./DefaultEventPluginOrder":17,"./EnterLeaveEventPlugin":18,"./HTMLDOMPropertyConfig":25,"./ReactBrowserComponentMixin":30,"./ReactComponentBrowserEnvironment":36,"./ReactDOMComponent":42,"./ReactDOMTextComponent":51,"./ReactDefaultBatchingStrategy":53,"./ReactDefaultPerf":55,"./ReactEventListener":63,"./ReactInjection":64,"./ReactInstanceHandles":66,"./ReactMount":70,"./ReactReconcileTransaction":80,"./SVGDOMPropertyConfig":90,"./SelectEventPlugin":91,"./ServerReactRootIndex":92,"./SimpleEventPlugin":93,"fbjs/lib/ExecutionEnvironment":134,"oMfpAn":2}],55:[function(require,module,exports){
+},{"./BeforeInputEventPlugin":139,"./ChangeEventPlugin":143,"./ClientReactRootIndex":144,"./DefaultEventPluginOrder":149,"./EnterLeaveEventPlugin":150,"./HTMLDOMPropertyConfig":157,"./ReactBrowserComponentMixin":162,"./ReactComponentBrowserEnvironment":168,"./ReactDOMComponent":174,"./ReactDOMTextComponent":183,"./ReactDefaultBatchingStrategy":185,"./ReactDefaultPerf":187,"./ReactEventListener":195,"./ReactInjection":196,"./ReactInstanceHandles":198,"./ReactMount":202,"./ReactReconcileTransaction":212,"./SVGDOMPropertyConfig":222,"./SelectEventPlugin":223,"./ServerReactRootIndex":224,"./SimpleEventPlugin":225,"fbjs/lib/ExecutionEnvironment":266,"oMfpAn":2}],187:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -9264,7 +15049,7 @@ var ReactDefaultPerf = {
 };
 
 module.exports = ReactDefaultPerf;
-},{"./DOMProperty":14,"./ReactDefaultPerfAnalysis":56,"./ReactMount":70,"./ReactPerf":76,"fbjs/lib/performanceNow":156}],56:[function(require,module,exports){
+},{"./DOMProperty":146,"./ReactDefaultPerfAnalysis":188,"./ReactMount":202,"./ReactPerf":208,"fbjs/lib/performanceNow":288}],188:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -9464,7 +15249,7 @@ var ReactDefaultPerfAnalysis = {
 };
 
 module.exports = ReactDefaultPerfAnalysis;
-},{"./Object.assign":27}],57:[function(require,module,exports){
+},{"./Object.assign":159}],189:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -9723,7 +15508,7 @@ ReactElement.isValidElement = function (object) {
 
 module.exports = ReactElement;
 }).call(this,require("oMfpAn"))
-},{"./Object.assign":27,"./ReactCurrentOwner":39,"oMfpAn":2}],58:[function(require,module,exports){
+},{"./Object.assign":159,"./ReactCurrentOwner":171,"oMfpAn":2}],190:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -10008,7 +15793,7 @@ var ReactElementValidator = {
 
 module.exports = ReactElementValidator;
 }).call(this,require("oMfpAn"))
-},{"./ReactCurrentOwner":39,"./ReactElement":57,"./ReactPropTypeLocationNames":77,"./ReactPropTypeLocations":78,"./getIteratorFn":119,"fbjs/lib/invariant":148,"fbjs/lib/warning":159,"oMfpAn":2}],59:[function(require,module,exports){
+},{"./ReactCurrentOwner":171,"./ReactElement":189,"./ReactPropTypeLocationNames":209,"./ReactPropTypeLocations":210,"./getIteratorFn":251,"fbjs/lib/invariant":280,"fbjs/lib/warning":291,"oMfpAn":2}],191:[function(require,module,exports){
 /**
  * Copyright 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -10060,7 +15845,7 @@ assign(ReactEmptyComponent.prototype, {
 ReactEmptyComponent.injection = ReactEmptyComponentInjection;
 
 module.exports = ReactEmptyComponent;
-},{"./Object.assign":27,"./ReactElement":57,"./ReactEmptyComponentRegistry":60,"./ReactReconciler":81}],60:[function(require,module,exports){
+},{"./Object.assign":159,"./ReactElement":189,"./ReactEmptyComponentRegistry":192,"./ReactReconciler":213}],192:[function(require,module,exports){
 /**
  * Copyright 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -10109,7 +15894,7 @@ var ReactEmptyComponentRegistry = {
 };
 
 module.exports = ReactEmptyComponentRegistry;
-},{}],61:[function(require,module,exports){
+},{}],193:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -10186,7 +15971,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactErrorUtils;
 }).call(this,require("oMfpAn"))
-},{"oMfpAn":2}],62:[function(require,module,exports){
+},{"oMfpAn":2}],194:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -10225,7 +16010,7 @@ var ReactEventEmitterMixin = {
 };
 
 module.exports = ReactEventEmitterMixin;
-},{"./EventPluginHub":20}],63:[function(require,module,exports){
+},{"./EventPluginHub":152}],195:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -10437,7 +16222,7 @@ var ReactEventListener = {
 };
 
 module.exports = ReactEventListener;
-},{"./Object.assign":27,"./PooledClass":28,"./ReactInstanceHandles":66,"./ReactMount":70,"./ReactUpdates":88,"./getEventTarget":118,"fbjs/lib/EventListener":133,"fbjs/lib/ExecutionEnvironment":134,"fbjs/lib/getUnboundedScrollPosition":145}],64:[function(require,module,exports){
+},{"./Object.assign":159,"./PooledClass":160,"./ReactInstanceHandles":198,"./ReactMount":202,"./ReactUpdates":220,"./getEventTarget":250,"fbjs/lib/EventListener":265,"fbjs/lib/ExecutionEnvironment":266,"fbjs/lib/getUnboundedScrollPosition":277}],196:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -10476,7 +16261,7 @@ var ReactInjection = {
 };
 
 module.exports = ReactInjection;
-},{"./DOMProperty":14,"./EventPluginHub":20,"./ReactBrowserEventEmitter":31,"./ReactClass":34,"./ReactComponentEnvironment":37,"./ReactEmptyComponent":59,"./ReactNativeComponent":73,"./ReactPerf":76,"./ReactRootIndex":83,"./ReactUpdates":88}],65:[function(require,module,exports){
+},{"./DOMProperty":146,"./EventPluginHub":152,"./ReactBrowserEventEmitter":163,"./ReactClass":166,"./ReactComponentEnvironment":169,"./ReactEmptyComponent":191,"./ReactNativeComponent":205,"./ReactPerf":208,"./ReactRootIndex":215,"./ReactUpdates":220}],197:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -10601,7 +16386,7 @@ var ReactInputSelection = {
 };
 
 module.exports = ReactInputSelection;
-},{"./ReactDOMSelection":49,"fbjs/lib/containsNode":137,"fbjs/lib/focusNode":142,"fbjs/lib/getActiveElement":143}],66:[function(require,module,exports){
+},{"./ReactDOMSelection":181,"fbjs/lib/containsNode":269,"fbjs/lib/focusNode":274,"fbjs/lib/getActiveElement":275}],198:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -10906,7 +16691,7 @@ var ReactInstanceHandles = {
 
 module.exports = ReactInstanceHandles;
 }).call(this,require("oMfpAn"))
-},{"./ReactRootIndex":83,"fbjs/lib/invariant":148,"oMfpAn":2}],67:[function(require,module,exports){
+},{"./ReactRootIndex":215,"fbjs/lib/invariant":280,"oMfpAn":2}],199:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -10954,7 +16739,7 @@ var ReactInstanceMap = {
 };
 
 module.exports = ReactInstanceMap;
-},{}],68:[function(require,module,exports){
+},{}],200:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -11031,7 +16816,7 @@ var React = {
 
 module.exports = React;
 }).call(this,require("oMfpAn"))
-},{"./Object.assign":27,"./ReactChildren":33,"./ReactClass":34,"./ReactComponent":35,"./ReactDOMFactories":43,"./ReactElement":57,"./ReactElementValidator":58,"./ReactPropTypes":79,"./ReactVersion":89,"./onlyChild":125,"oMfpAn":2}],69:[function(require,module,exports){
+},{"./Object.assign":159,"./ReactChildren":165,"./ReactClass":166,"./ReactComponent":167,"./ReactDOMFactories":175,"./ReactElement":189,"./ReactElementValidator":190,"./ReactPropTypes":211,"./ReactVersion":221,"./onlyChild":257,"oMfpAn":2}],201:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -11077,7 +16862,7 @@ var ReactMarkupChecksum = {
 };
 
 module.exports = ReactMarkupChecksum;
-},{"./adler32":108}],70:[function(require,module,exports){
+},{"./adler32":240}],202:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -11925,7 +17710,7 @@ ReactPerf.measureMethods(ReactMount, 'ReactMount', {
 
 module.exports = ReactMount;
 }).call(this,require("oMfpAn"))
-},{"./DOMProperty":14,"./Object.assign":27,"./ReactBrowserEventEmitter":31,"./ReactCurrentOwner":39,"./ReactDOMFeatureFlags":44,"./ReactElement":57,"./ReactEmptyComponentRegistry":60,"./ReactInstanceHandles":66,"./ReactInstanceMap":67,"./ReactMarkupChecksum":69,"./ReactPerf":76,"./ReactReconciler":81,"./ReactUpdateQueue":87,"./ReactUpdates":88,"./instantiateReactComponent":122,"./setInnerHTML":128,"./shouldUpdateReactComponent":130,"./validateDOMNesting":132,"fbjs/lib/containsNode":137,"fbjs/lib/emptyObject":141,"fbjs/lib/invariant":148,"fbjs/lib/warning":159,"oMfpAn":2}],71:[function(require,module,exports){
+},{"./DOMProperty":146,"./Object.assign":159,"./ReactBrowserEventEmitter":163,"./ReactCurrentOwner":171,"./ReactDOMFeatureFlags":176,"./ReactElement":189,"./ReactEmptyComponentRegistry":192,"./ReactInstanceHandles":198,"./ReactInstanceMap":199,"./ReactMarkupChecksum":201,"./ReactPerf":208,"./ReactReconciler":213,"./ReactUpdateQueue":219,"./ReactUpdates":220,"./instantiateReactComponent":254,"./setInnerHTML":260,"./shouldUpdateReactComponent":262,"./validateDOMNesting":264,"fbjs/lib/containsNode":269,"fbjs/lib/emptyObject":273,"fbjs/lib/invariant":280,"fbjs/lib/warning":291,"oMfpAn":2}],203:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -12424,7 +18209,7 @@ var ReactMultiChild = {
 
 module.exports = ReactMultiChild;
 }).call(this,require("oMfpAn"))
-},{"./ReactChildReconciler":32,"./ReactComponentEnvironment":37,"./ReactCurrentOwner":39,"./ReactMultiChildUpdateTypes":72,"./ReactReconciler":81,"./flattenChildren":113,"oMfpAn":2}],72:[function(require,module,exports){
+},{"./ReactChildReconciler":164,"./ReactComponentEnvironment":169,"./ReactCurrentOwner":171,"./ReactMultiChildUpdateTypes":204,"./ReactReconciler":213,"./flattenChildren":245,"oMfpAn":2}],204:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -12457,7 +18242,7 @@ var ReactMultiChildUpdateTypes = keyMirror({
 });
 
 module.exports = ReactMultiChildUpdateTypes;
-},{"fbjs/lib/keyMirror":151}],73:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":283}],205:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -12554,7 +18339,7 @@ var ReactNativeComponent = {
 
 module.exports = ReactNativeComponent;
 }).call(this,require("oMfpAn"))
-},{"./Object.assign":27,"fbjs/lib/invariant":148,"oMfpAn":2}],74:[function(require,module,exports){
+},{"./Object.assign":159,"fbjs/lib/invariant":280,"oMfpAn":2}],206:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015, Facebook, Inc.
@@ -12675,7 +18460,7 @@ var ReactNoopUpdateQueue = {
 
 module.exports = ReactNoopUpdateQueue;
 }).call(this,require("oMfpAn"))
-},{"fbjs/lib/warning":159,"oMfpAn":2}],75:[function(require,module,exports){
+},{"fbjs/lib/warning":291,"oMfpAn":2}],207:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -12769,7 +18554,7 @@ var ReactOwner = {
 
 module.exports = ReactOwner;
 }).call(this,require("oMfpAn"))
-},{"fbjs/lib/invariant":148,"oMfpAn":2}],76:[function(require,module,exports){
+},{"fbjs/lib/invariant":280,"oMfpAn":2}],208:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -12868,7 +18653,7 @@ function _noMeasure(objName, fnName, func) {
 
 module.exports = ReactPerf;
 }).call(this,require("oMfpAn"))
-},{"oMfpAn":2}],77:[function(require,module,exports){
+},{"oMfpAn":2}],209:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -12895,7 +18680,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactPropTypeLocationNames;
 }).call(this,require("oMfpAn"))
-},{"oMfpAn":2}],78:[function(require,module,exports){
+},{"oMfpAn":2}],210:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -12918,7 +18703,7 @@ var ReactPropTypeLocations = keyMirror({
 });
 
 module.exports = ReactPropTypeLocations;
-},{"fbjs/lib/keyMirror":151}],79:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":283}],211:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -13275,7 +19060,7 @@ function getClassName(propValue) {
 }
 
 module.exports = ReactPropTypes;
-},{"./ReactElement":57,"./ReactPropTypeLocationNames":77,"./getIteratorFn":119,"fbjs/lib/emptyFunction":140}],80:[function(require,module,exports){
+},{"./ReactElement":189,"./ReactPropTypeLocationNames":209,"./getIteratorFn":251,"fbjs/lib/emptyFunction":272}],212:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -13427,7 +19212,7 @@ assign(ReactReconcileTransaction.prototype, Transaction.Mixin, Mixin);
 PooledClass.addPoolingTo(ReactReconcileTransaction);
 
 module.exports = ReactReconcileTransaction;
-},{"./CallbackQueue":10,"./Object.assign":27,"./PooledClass":28,"./ReactBrowserEventEmitter":31,"./ReactDOMFeatureFlags":44,"./ReactInputSelection":65,"./Transaction":105}],81:[function(require,module,exports){
+},{"./CallbackQueue":142,"./Object.assign":159,"./PooledClass":160,"./ReactBrowserEventEmitter":163,"./ReactDOMFeatureFlags":176,"./ReactInputSelection":197,"./Transaction":237}],213:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -13535,7 +19320,7 @@ var ReactReconciler = {
 };
 
 module.exports = ReactReconciler;
-},{"./ReactRef":82}],82:[function(require,module,exports){
+},{"./ReactRef":214}],214:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -13614,7 +19399,7 @@ ReactRef.detachRefs = function (instance, element) {
 };
 
 module.exports = ReactRef;
-},{"./ReactOwner":75}],83:[function(require,module,exports){
+},{"./ReactOwner":207}],215:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -13644,7 +19429,7 @@ var ReactRootIndex = {
 };
 
 module.exports = ReactRootIndex;
-},{}],84:[function(require,module,exports){
+},{}],216:[function(require,module,exports){
 /**
  * Copyright 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -13668,7 +19453,7 @@ var ReactServerBatchingStrategy = {
 };
 
 module.exports = ReactServerBatchingStrategy;
-},{}],85:[function(require,module,exports){
+},{}],217:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -13754,7 +19539,7 @@ module.exports = {
   renderToStaticMarkup: renderToStaticMarkup
 };
 }).call(this,require("oMfpAn"))
-},{"./ReactDefaultBatchingStrategy":53,"./ReactElement":57,"./ReactInstanceHandles":66,"./ReactMarkupChecksum":69,"./ReactServerBatchingStrategy":84,"./ReactServerRenderingTransaction":86,"./ReactUpdates":88,"./instantiateReactComponent":122,"fbjs/lib/emptyObject":141,"fbjs/lib/invariant":148,"oMfpAn":2}],86:[function(require,module,exports){
+},{"./ReactDefaultBatchingStrategy":185,"./ReactElement":189,"./ReactInstanceHandles":198,"./ReactMarkupChecksum":201,"./ReactServerBatchingStrategy":216,"./ReactServerRenderingTransaction":218,"./ReactUpdates":220,"./instantiateReactComponent":254,"fbjs/lib/emptyObject":273,"fbjs/lib/invariant":280,"oMfpAn":2}],218:[function(require,module,exports){
 /**
  * Copyright 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -13842,7 +19627,7 @@ assign(ReactServerRenderingTransaction.prototype, Transaction.Mixin, Mixin);
 PooledClass.addPoolingTo(ReactServerRenderingTransaction);
 
 module.exports = ReactServerRenderingTransaction;
-},{"./CallbackQueue":10,"./Object.assign":27,"./PooledClass":28,"./Transaction":105,"fbjs/lib/emptyFunction":140}],87:[function(require,module,exports){
+},{"./CallbackQueue":142,"./Object.assign":159,"./PooledClass":160,"./Transaction":237,"fbjs/lib/emptyFunction":272}],219:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015, Facebook, Inc.
@@ -14102,7 +19887,7 @@ var ReactUpdateQueue = {
 
 module.exports = ReactUpdateQueue;
 }).call(this,require("oMfpAn"))
-},{"./Object.assign":27,"./ReactCurrentOwner":39,"./ReactElement":57,"./ReactInstanceMap":67,"./ReactUpdates":88,"fbjs/lib/invariant":148,"fbjs/lib/warning":159,"oMfpAn":2}],88:[function(require,module,exports){
+},{"./Object.assign":159,"./ReactCurrentOwner":171,"./ReactElement":189,"./ReactInstanceMap":199,"./ReactUpdates":220,"fbjs/lib/invariant":280,"fbjs/lib/warning":291,"oMfpAn":2}],220:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -14328,7 +20113,7 @@ var ReactUpdates = {
 
 module.exports = ReactUpdates;
 }).call(this,require("oMfpAn"))
-},{"./CallbackQueue":10,"./Object.assign":27,"./PooledClass":28,"./ReactPerf":76,"./ReactReconciler":81,"./Transaction":105,"fbjs/lib/invariant":148,"oMfpAn":2}],89:[function(require,module,exports){
+},{"./CallbackQueue":142,"./Object.assign":159,"./PooledClass":160,"./ReactPerf":208,"./ReactReconciler":213,"./Transaction":237,"fbjs/lib/invariant":280,"oMfpAn":2}],221:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -14343,7 +20128,7 @@ module.exports = ReactUpdates;
 'use strict';
 
 module.exports = '0.14.0';
-},{}],90:[function(require,module,exports){
+},{}],222:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -14471,7 +20256,7 @@ var SVGDOMPropertyConfig = {
 };
 
 module.exports = SVGDOMPropertyConfig;
-},{"./DOMProperty":14}],91:[function(require,module,exports){
+},{"./DOMProperty":146}],223:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -14673,7 +20458,7 @@ var SelectEventPlugin = {
 };
 
 module.exports = SelectEventPlugin;
-},{"./EventConstants":19,"./EventPropagators":23,"./ReactInputSelection":65,"./SyntheticEvent":97,"./isTextInputElement":124,"fbjs/lib/ExecutionEnvironment":134,"fbjs/lib/getActiveElement":143,"fbjs/lib/keyOf":152,"fbjs/lib/shallowEqual":157}],92:[function(require,module,exports){
+},{"./EventConstants":151,"./EventPropagators":155,"./ReactInputSelection":197,"./SyntheticEvent":229,"./isTextInputElement":256,"fbjs/lib/ExecutionEnvironment":266,"fbjs/lib/getActiveElement":275,"fbjs/lib/keyOf":284,"fbjs/lib/shallowEqual":289}],224:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -14703,7 +20488,7 @@ var ServerReactRootIndex = {
 };
 
 module.exports = ServerReactRootIndex;
-},{}],93:[function(require,module,exports){
+},{}],225:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -15293,7 +21078,7 @@ var SimpleEventPlugin = {
 
 module.exports = SimpleEventPlugin;
 }).call(this,require("oMfpAn"))
-},{"./EventConstants":19,"./EventPropagators":23,"./ReactMount":70,"./SyntheticClipboardEvent":94,"./SyntheticDragEvent":96,"./SyntheticEvent":97,"./SyntheticFocusEvent":98,"./SyntheticKeyboardEvent":100,"./SyntheticMouseEvent":101,"./SyntheticTouchEvent":102,"./SyntheticUIEvent":103,"./SyntheticWheelEvent":104,"./getEventCharCode":115,"fbjs/lib/EventListener":133,"fbjs/lib/emptyFunction":140,"fbjs/lib/invariant":148,"fbjs/lib/keyOf":152,"oMfpAn":2}],94:[function(require,module,exports){
+},{"./EventConstants":151,"./EventPropagators":155,"./ReactMount":202,"./SyntheticClipboardEvent":226,"./SyntheticDragEvent":228,"./SyntheticEvent":229,"./SyntheticFocusEvent":230,"./SyntheticKeyboardEvent":232,"./SyntheticMouseEvent":233,"./SyntheticTouchEvent":234,"./SyntheticUIEvent":235,"./SyntheticWheelEvent":236,"./getEventCharCode":247,"fbjs/lib/EventListener":265,"fbjs/lib/emptyFunction":272,"fbjs/lib/invariant":280,"fbjs/lib/keyOf":284,"oMfpAn":2}],226:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -15333,7 +21118,7 @@ function SyntheticClipboardEvent(dispatchConfig, dispatchMarker, nativeEvent, na
 SyntheticEvent.augmentClass(SyntheticClipboardEvent, ClipboardEventInterface);
 
 module.exports = SyntheticClipboardEvent;
-},{"./SyntheticEvent":97}],95:[function(require,module,exports){
+},{"./SyntheticEvent":229}],227:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -15371,7 +21156,7 @@ function SyntheticCompositionEvent(dispatchConfig, dispatchMarker, nativeEvent, 
 SyntheticEvent.augmentClass(SyntheticCompositionEvent, CompositionEventInterface);
 
 module.exports = SyntheticCompositionEvent;
-},{"./SyntheticEvent":97}],96:[function(require,module,exports){
+},{"./SyntheticEvent":229}],228:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -15409,7 +21194,7 @@ function SyntheticDragEvent(dispatchConfig, dispatchMarker, nativeEvent, nativeE
 SyntheticMouseEvent.augmentClass(SyntheticDragEvent, DragEventInterface);
 
 module.exports = SyntheticDragEvent;
-},{"./SyntheticMouseEvent":101}],97:[function(require,module,exports){
+},{"./SyntheticMouseEvent":233}],229:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -15589,7 +21374,7 @@ PooledClass.addPoolingTo(SyntheticEvent, PooledClass.fourArgumentPooler);
 
 module.exports = SyntheticEvent;
 }).call(this,require("oMfpAn"))
-},{"./Object.assign":27,"./PooledClass":28,"fbjs/lib/emptyFunction":140,"fbjs/lib/warning":159,"oMfpAn":2}],98:[function(require,module,exports){
+},{"./Object.assign":159,"./PooledClass":160,"fbjs/lib/emptyFunction":272,"fbjs/lib/warning":291,"oMfpAn":2}],230:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -15627,7 +21412,7 @@ function SyntheticFocusEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticFocusEvent, FocusEventInterface);
 
 module.exports = SyntheticFocusEvent;
-},{"./SyntheticUIEvent":103}],99:[function(require,module,exports){
+},{"./SyntheticUIEvent":235}],231:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -15666,7 +21451,7 @@ function SyntheticInputEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticEvent.augmentClass(SyntheticInputEvent, InputEventInterface);
 
 module.exports = SyntheticInputEvent;
-},{"./SyntheticEvent":97}],100:[function(require,module,exports){
+},{"./SyntheticEvent":229}],232:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -15752,7 +21537,7 @@ function SyntheticKeyboardEvent(dispatchConfig, dispatchMarker, nativeEvent, nat
 SyntheticUIEvent.augmentClass(SyntheticKeyboardEvent, KeyboardEventInterface);
 
 module.exports = SyntheticKeyboardEvent;
-},{"./SyntheticUIEvent":103,"./getEventCharCode":115,"./getEventKey":116,"./getEventModifierState":117}],101:[function(require,module,exports){
+},{"./SyntheticUIEvent":235,"./getEventCharCode":247,"./getEventKey":248,"./getEventModifierState":249}],233:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -15826,7 +21611,7 @@ function SyntheticMouseEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticMouseEvent, MouseEventInterface);
 
 module.exports = SyntheticMouseEvent;
-},{"./SyntheticUIEvent":103,"./ViewportMetrics":106,"./getEventModifierState":117}],102:[function(require,module,exports){
+},{"./SyntheticUIEvent":235,"./ViewportMetrics":238,"./getEventModifierState":249}],234:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -15873,7 +21658,7 @@ function SyntheticTouchEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticTouchEvent, TouchEventInterface);
 
 module.exports = SyntheticTouchEvent;
-},{"./SyntheticUIEvent":103,"./getEventModifierState":117}],103:[function(require,module,exports){
+},{"./SyntheticUIEvent":235,"./getEventModifierState":249}],235:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -15934,7 +21719,7 @@ function SyntheticUIEvent(dispatchConfig, dispatchMarker, nativeEvent, nativeEve
 SyntheticEvent.augmentClass(SyntheticUIEvent, UIEventInterface);
 
 module.exports = SyntheticUIEvent;
-},{"./SyntheticEvent":97,"./getEventTarget":118}],104:[function(require,module,exports){
+},{"./SyntheticEvent":229,"./getEventTarget":250}],236:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -15990,7 +21775,7 @@ function SyntheticWheelEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticMouseEvent.augmentClass(SyntheticWheelEvent, WheelEventInterface);
 
 module.exports = SyntheticWheelEvent;
-},{"./SyntheticMouseEvent":101}],105:[function(require,module,exports){
+},{"./SyntheticMouseEvent":233}],237:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -16224,7 +22009,7 @@ var Transaction = {
 
 module.exports = Transaction;
 }).call(this,require("oMfpAn"))
-},{"fbjs/lib/invariant":148,"oMfpAn":2}],106:[function(require,module,exports){
+},{"fbjs/lib/invariant":280,"oMfpAn":2}],238:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -16252,7 +22037,7 @@ var ViewportMetrics = {
 };
 
 module.exports = ViewportMetrics;
-},{}],107:[function(require,module,exports){
+},{}],239:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -16314,7 +22099,7 @@ function accumulateInto(current, next) {
 
 module.exports = accumulateInto;
 }).call(this,require("oMfpAn"))
-},{"fbjs/lib/invariant":148,"oMfpAn":2}],108:[function(require,module,exports){
+},{"fbjs/lib/invariant":280,"oMfpAn":2}],240:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -16357,7 +22142,7 @@ function adler32(data) {
 }
 
 module.exports = adler32;
-},{}],109:[function(require,module,exports){
+},{}],241:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -16413,7 +22198,7 @@ function dangerousStyleValue(name, value) {
 }
 
 module.exports = dangerousStyleValue;
-},{"./CSSProperty":8}],110:[function(require,module,exports){
+},{"./CSSProperty":140}],242:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -16464,7 +22249,7 @@ function deprecated(fnName, newModule, newPackage, ctx, fn) {
 
 module.exports = deprecated;
 }).call(this,require("oMfpAn"))
-},{"./Object.assign":27,"fbjs/lib/warning":159,"oMfpAn":2}],111:[function(require,module,exports){
+},{"./Object.assign":159,"fbjs/lib/warning":291,"oMfpAn":2}],243:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -16503,7 +22288,7 @@ function escapeTextContentForBrowser(text) {
 }
 
 module.exports = escapeTextContentForBrowser;
-},{}],112:[function(require,module,exports){
+},{}],244:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -16555,7 +22340,7 @@ function findDOMNode(componentOrElement) {
 
 module.exports = findDOMNode;
 }).call(this,require("oMfpAn"))
-},{"./ReactCurrentOwner":39,"./ReactInstanceMap":67,"./ReactMount":70,"fbjs/lib/invariant":148,"fbjs/lib/warning":159,"oMfpAn":2}],113:[function(require,module,exports){
+},{"./ReactCurrentOwner":171,"./ReactInstanceMap":199,"./ReactMount":202,"fbjs/lib/invariant":280,"fbjs/lib/warning":291,"oMfpAn":2}],245:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -16606,7 +22391,7 @@ function flattenChildren(children) {
 
 module.exports = flattenChildren;
 }).call(this,require("oMfpAn"))
-},{"./traverseAllChildren":131,"fbjs/lib/warning":159,"oMfpAn":2}],114:[function(require,module,exports){
+},{"./traverseAllChildren":263,"fbjs/lib/warning":291,"oMfpAn":2}],246:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -16636,7 +22421,7 @@ var forEachAccumulated = function (arr, cb, scope) {
 };
 
 module.exports = forEachAccumulated;
-},{}],115:[function(require,module,exports){
+},{}],247:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -16687,7 +22472,7 @@ function getEventCharCode(nativeEvent) {
 }
 
 module.exports = getEventCharCode;
-},{}],116:[function(require,module,exports){
+},{}],248:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -16791,7 +22576,7 @@ function getEventKey(nativeEvent) {
 }
 
 module.exports = getEventKey;
-},{"./getEventCharCode":115}],117:[function(require,module,exports){
+},{"./getEventCharCode":247}],249:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -16836,7 +22621,7 @@ function getEventModifierState(nativeEvent) {
 }
 
 module.exports = getEventModifierState;
-},{}],118:[function(require,module,exports){
+},{}],250:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -16866,7 +22651,7 @@ function getEventTarget(nativeEvent) {
 }
 
 module.exports = getEventTarget;
-},{}],119:[function(require,module,exports){
+},{}],251:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -16907,7 +22692,7 @@ function getIteratorFn(maybeIterable) {
 }
 
 module.exports = getIteratorFn;
-},{}],120:[function(require,module,exports){
+},{}],252:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -16981,7 +22766,7 @@ function getNodeForCharacterOffset(root, offset) {
 }
 
 module.exports = getNodeForCharacterOffset;
-},{}],121:[function(require,module,exports){
+},{}],253:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -17015,7 +22800,7 @@ function getTextContentAccessor() {
 }
 
 module.exports = getTextContentAccessor;
-},{"fbjs/lib/ExecutionEnvironment":134}],122:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":266}],254:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -17130,7 +22915,7 @@ function instantiateReactComponent(node) {
 
 module.exports = instantiateReactComponent;
 }).call(this,require("oMfpAn"))
-},{"./Object.assign":27,"./ReactCompositeComponent":38,"./ReactEmptyComponent":59,"./ReactNativeComponent":73,"fbjs/lib/invariant":148,"fbjs/lib/warning":159,"oMfpAn":2}],123:[function(require,module,exports){
+},{"./Object.assign":159,"./ReactCompositeComponent":170,"./ReactEmptyComponent":191,"./ReactNativeComponent":205,"fbjs/lib/invariant":280,"fbjs/lib/warning":291,"oMfpAn":2}],255:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -17191,7 +22976,7 @@ function isEventSupported(eventNameSuffix, capture) {
 }
 
 module.exports = isEventSupported;
-},{"fbjs/lib/ExecutionEnvironment":134}],124:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":266}],256:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -17232,7 +23017,7 @@ function isTextInputElement(elem) {
 }
 
 module.exports = isTextInputElement;
-},{}],125:[function(require,module,exports){
+},{}],257:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -17268,7 +23053,7 @@ function onlyChild(children) {
 
 module.exports = onlyChild;
 }).call(this,require("oMfpAn"))
-},{"./ReactElement":57,"fbjs/lib/invariant":148,"oMfpAn":2}],126:[function(require,module,exports){
+},{"./ReactElement":189,"fbjs/lib/invariant":280,"oMfpAn":2}],258:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -17295,7 +23080,7 @@ function quoteAttributeValueForBrowser(value) {
 }
 
 module.exports = quoteAttributeValueForBrowser;
-},{"./escapeTextContentForBrowser":111}],127:[function(require,module,exports){
+},{"./escapeTextContentForBrowser":243}],259:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -17312,7 +23097,7 @@ module.exports = quoteAttributeValueForBrowser;
 var ReactMount = require('./ReactMount');
 
 module.exports = ReactMount.renderSubtreeIntoContainer;
-},{"./ReactMount":70}],128:[function(require,module,exports){
+},{"./ReactMount":202}],260:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -17403,7 +23188,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = setInnerHTML;
-},{"fbjs/lib/ExecutionEnvironment":134}],129:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":266}],261:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -17444,7 +23229,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = setTextContent;
-},{"./escapeTextContentForBrowser":111,"./setInnerHTML":128,"fbjs/lib/ExecutionEnvironment":134}],130:[function(require,module,exports){
+},{"./escapeTextContentForBrowser":243,"./setInnerHTML":260,"fbjs/lib/ExecutionEnvironment":266}],262:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -17488,7 +23273,7 @@ function shouldUpdateReactComponent(prevElement, nextElement) {
 }
 
 module.exports = shouldUpdateReactComponent;
-},{}],131:[function(require,module,exports){
+},{}],263:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -17680,7 +23465,7 @@ function traverseAllChildren(children, callback, traverseContext) {
 
 module.exports = traverseAllChildren;
 }).call(this,require("oMfpAn"))
-},{"./ReactCurrentOwner":39,"./ReactElement":57,"./ReactInstanceHandles":66,"./getIteratorFn":119,"fbjs/lib/invariant":148,"fbjs/lib/warning":159,"oMfpAn":2}],132:[function(require,module,exports){
+},{"./ReactCurrentOwner":171,"./ReactElement":189,"./ReactInstanceHandles":198,"./getIteratorFn":251,"fbjs/lib/invariant":280,"fbjs/lib/warning":291,"oMfpAn":2}],264:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015, Facebook, Inc.
@@ -18046,7 +23831,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = validateDOMNesting;
 }).call(this,require("oMfpAn"))
-},{"./Object.assign":27,"fbjs/lib/emptyFunction":140,"fbjs/lib/warning":159,"oMfpAn":2}],133:[function(require,module,exports){
+},{"./Object.assign":159,"fbjs/lib/emptyFunction":272,"fbjs/lib/warning":291,"oMfpAn":2}],265:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -18133,7 +23918,7 @@ var EventListener = {
 
 module.exports = EventListener;
 }).call(this,require("oMfpAn"))
-},{"./emptyFunction":140,"oMfpAn":2}],134:[function(require,module,exports){
+},{"./emptyFunction":272,"oMfpAn":2}],266:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18170,7 +23955,7 @@ var ExecutionEnvironment = {
 };
 
 module.exports = ExecutionEnvironment;
-},{}],135:[function(require,module,exports){
+},{}],267:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18203,7 +23988,7 @@ function camelize(string) {
 }
 
 module.exports = camelize;
-},{}],136:[function(require,module,exports){
+},{}],268:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18244,7 +24029,7 @@ function camelizeStyleName(string) {
 }
 
 module.exports = camelizeStyleName;
-},{"./camelize":135}],137:[function(require,module,exports){
+},{"./camelize":267}],269:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18300,7 +24085,7 @@ function containsNode(_x, _x2) {
 }
 
 module.exports = containsNode;
-},{"./isTextNode":150}],138:[function(require,module,exports){
+},{"./isTextNode":282}],270:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18386,7 +24171,7 @@ function createArrayFromMixed(obj) {
 }
 
 module.exports = createArrayFromMixed;
-},{"./toArray":158}],139:[function(require,module,exports){
+},{"./toArray":290}],271:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -18473,7 +24258,7 @@ function createNodesFromMarkup(markup, handleScript) {
 
 module.exports = createNodesFromMarkup;
 }).call(this,require("oMfpAn"))
-},{"./ExecutionEnvironment":134,"./createArrayFromMixed":138,"./getMarkupWrap":144,"./invariant":148,"oMfpAn":2}],140:[function(require,module,exports){
+},{"./ExecutionEnvironment":266,"./createArrayFromMixed":270,"./getMarkupWrap":276,"./invariant":280,"oMfpAn":2}],272:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18512,7 +24297,7 @@ emptyFunction.thatReturnsArgument = function (arg) {
 };
 
 module.exports = emptyFunction;
-},{}],141:[function(require,module,exports){
+},{}],273:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -18535,7 +24320,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = emptyObject;
 }).call(this,require("oMfpAn"))
-},{"oMfpAn":2}],142:[function(require,module,exports){
+},{"oMfpAn":2}],274:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18562,7 +24347,7 @@ function focusNode(node) {
 }
 
 module.exports = focusNode;
-},{}],143:[function(require,module,exports){
+},{}],275:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18596,7 +24381,7 @@ function getActiveElement() /*?DOMElement*/{
 }
 
 module.exports = getActiveElement;
-},{}],144:[function(require,module,exports){
+},{}],276:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -18694,7 +24479,7 @@ function getMarkupWrap(nodeName) {
 
 module.exports = getMarkupWrap;
 }).call(this,require("oMfpAn"))
-},{"./ExecutionEnvironment":134,"./invariant":148,"oMfpAn":2}],145:[function(require,module,exports){
+},{"./ExecutionEnvironment":266,"./invariant":280,"oMfpAn":2}],277:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18733,7 +24518,7 @@ function getUnboundedScrollPosition(scrollable) {
 }
 
 module.exports = getUnboundedScrollPosition;
-},{}],146:[function(require,module,exports){
+},{}],278:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18767,7 +24552,7 @@ function hyphenate(string) {
 }
 
 module.exports = hyphenate;
-},{}],147:[function(require,module,exports){
+},{}],279:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18807,7 +24592,7 @@ function hyphenateStyleName(string) {
 }
 
 module.exports = hyphenateStyleName;
-},{"./hyphenate":146}],148:[function(require,module,exports){
+},{"./hyphenate":278}],280:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -18859,7 +24644,7 @@ var invariant = function (condition, format, a, b, c, d, e, f) {
 
 module.exports = invariant;
 }).call(this,require("oMfpAn"))
-},{"oMfpAn":2}],149:[function(require,module,exports){
+},{"oMfpAn":2}],281:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18883,7 +24668,7 @@ function isNode(object) {
 }
 
 module.exports = isNode;
-},{}],150:[function(require,module,exports){
+},{}],282:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18909,7 +24694,7 @@ function isTextNode(object) {
 }
 
 module.exports = isTextNode;
-},{"./isNode":149}],151:[function(require,module,exports){
+},{"./isNode":281}],283:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -18960,7 +24745,7 @@ var keyMirror = function (obj) {
 
 module.exports = keyMirror;
 }).call(this,require("oMfpAn"))
-},{"./invariant":148,"oMfpAn":2}],152:[function(require,module,exports){
+},{"./invariant":280,"oMfpAn":2}],284:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -18996,7 +24781,7 @@ var keyOf = function (oneKeyObj) {
 };
 
 module.exports = keyOf;
-},{}],153:[function(require,module,exports){
+},{}],285:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -19048,7 +24833,7 @@ function mapObject(object, callback, context) {
 }
 
 module.exports = mapObject;
-},{}],154:[function(require,module,exports){
+},{}],286:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -19080,7 +24865,7 @@ function memoizeStringOnly(callback) {
 }
 
 module.exports = memoizeStringOnly;
-},{}],155:[function(require,module,exports){
+},{}],287:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -19104,7 +24889,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = performance || {};
-},{"./ExecutionEnvironment":134}],156:[function(require,module,exports){
+},{"./ExecutionEnvironment":266}],288:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -19134,7 +24919,7 @@ if (!curPerformance || !curPerformance.now) {
 var performanceNow = curPerformance.now.bind(curPerformance);
 
 module.exports = performanceNow;
-},{"./performance":155}],157:[function(require,module,exports){
+},{"./performance":287}],289:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -19185,7 +24970,7 @@ function shallowEqual(objA, objB) {
 }
 
 module.exports = shallowEqual;
-},{}],158:[function(require,module,exports){
+},{}],290:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -19245,7 +25030,7 @@ function toArray(obj) {
 
 module.exports = toArray;
 }).call(this,require("oMfpAn"))
-},{"./invariant":148,"oMfpAn":2}],159:[function(require,module,exports){
+},{"./invariant":280,"oMfpAn":2}],291:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -19305,63 +25090,167 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = warning;
 }).call(this,require("oMfpAn"))
-},{"./emptyFunction":140,"oMfpAn":2}],160:[function(require,module,exports){
+},{"./emptyFunction":272,"oMfpAn":2}],292:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib/React');
 
-},{"./lib/React":29}],161:[function(require,module,exports){
+},{"./lib/React":161}],293:[function(require,module,exports){
 'use strict';
 
-var React = require('react');
-var ReactDOM = require('react-dom');
-var Tree = require('basic-tree');
-var Random = require('random-set');
-var Color = require('../structures/color');
+var Deps = require('../structures/manifest'),
+    React = require('react'),
+    ReactDOM = require('react-dom'),
+    Linkable = require('./linkable'),
+    DragDropContext = require('react-dnd').DragDropContext,
+    HTML5Backend = require('react-dnd-html5-backend');
+
+var Context = React.createClass({ displayName: "Context",
+  getInitialState: function getInitialState() {
+    console.log(this.props.coordinates);
+    return { height: this.props.height || 600, width: this.props.width || 300 };
+  },
+
+  renderLinkable: function renderLinkable() {
+    return React.createElement(Linkable, null);
+  },
+
+  render: function render() {
+    return React.createElement("svg", { height: this.state.height, width: this.state.width, style: this.setStyle() }, this.renderLinkable());
+  },
+  setStyle: function setStyle() {
+    return {
+      border: '3px solid black',
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      left: 0,
+      right: 0,
+      margin: 'auto'
+    };
+  }
+});
+
+module.exports = DragDropContext(HTML5Backend)(Context);
+
+// Deps.ReactDOM.render(<WrappedContext height="600" width="300">
+//   </WrappedContext>,
+//   document.getElementById('game'))
+
+},{"../structures/manifest":298,"./linkable":295,"react":292,"react-dnd":73,"react-dnd-html5-backend":13,"react-dom":137}],294:[function(require,module,exports){
+'use strict';
+
+var Deps = require('../structures/manifest'),
+    React = require('react'),
+    ReactDOM = require('react-dom'),
+    Context = require('./context.jsx'),
+    Observe = require('./observer').observe;
+
+Observe(function (coordinates) {
+  ReactDOM.render(React.createElement(Context, { coordinates: coordinates }), document.getElementById('game'));
+});
+
+},{"../structures/manifest":298,"./context.jsx":293,"./observer":296,"react":292,"react-dom":137}],295:[function(require,module,exports){
+'use strict';
+
+var Deps = require('../structures/manifest'),
+    React = require('react'),
+    ReactDOM = require('react-dom'),
+    DragSource = require('react-dnd').DragSource;
+
+var ItemTypes = {
+  LINKABLE: 'linkable'
+};
+
+var circleSource = {
+  beginDrag: function beginDrag(props) {
+    return {
+      x: props.coordinates.x,
+      y: props.coordinates.y
+    };
+  }
+};
+
+function collect(connect, monitor) {
+  return {
+    connectDragSource: connect.dragSource(),
+    isDragging: monitor.isDragging()
+  };
+}
 
 var Linkable = React.createClass({ displayName: "Linkable",
   getInitialState: function getInitialState() {
-    var circles = new Array();
-
-    circles.push({
+    var circle = {
       coordinates: {
+        // x: this.props.x,
+        // y: this.props.y,
+        // r: this.props.r
         x: "50",
         y: "50",
         r: "50"
       },
 
-      color: "red"
-    });
-
-    circles.push({
-      coordinates: {
-        x: "100",
-        y: "100",
-        r: "20"
-      },
-
+      // color: this.props.color
       color: "blue"
-    });
+    };
 
-    return { circles: circles };
+    return { circle: circle };
   },
 
   render: function render() {
-    return React.createElement("g", null, " ", this.state.circles.map(function (circle) {
-      return React.createElement("circle", { cx: circle.coordinates.x, cy: circle.coordinates.y, r: circle.coordinates.r, stroke: "black", strokeWidth: "1", fill: circle.color });
-    }), " ");
-  },
+    var connectDragSource = this.props.connectDragSource;
+    var isDragging = this.props.isDragging;
+    var coordinates = this.props.coordinates;
 
-  handleClick: function handleClick() {
-    createFirework(64, 59, 4, 2, null, null, null, null, false, true);
+    return connectDragSource(React.createElement("circle", { cx: 50, cy: 50, r: 50, fill: "blue", style: {
+        opacity: isDragging ? 0.5 : 1,
+        fontSize: 25,
+        fontWeight: 'bold',
+        cursor: 'move'
+      } }, "♘")
+
+    // <circle cx={this.state.circle.coordinates.x} cy={this.state.circle.coordinates.y}
+    // r={this.state.circle.coordinates.r} style={this.setStyle(isDragging)} stroke="black" strokeWidth="1" fill={this.state.circle.color} />
+    );
+  },
+  setStyle: function setStyle(drag) {
+    return {
+      opacity: drag ? 0.5 : 1
+    };
   }
 
 });
 
-ReactDOM.render(React.createElement(Linkable, null), document.getElementById("game"));
-module.exports = 'test';
+module.exports = DragSource(ItemTypes.LINKABLE, circleSource, collect)(Linkable);
 
-},{"../structures/color":162,"basic-tree":1,"random-set":3,"react":160,"react-dom":5}],162:[function(require,module,exports){
+// Deps.ReactDOM.render( <Linkable x={"50"} y={"50"} r={"50"} color={"blue"}></Linkable>,
+//   document.getElementById( "game" ));
+
+},{"../structures/manifest":298,"react":292,"react-dnd":73,"react-dom":137}],296:[function(require,module,exports){
+'use strict';
+
+var coordinates = [0, 0];
+var observer = null;
+
+function emitChange() {
+  observer(coordinates);
+}
+
+exports.observe = function (o) {
+  if (observer) {
+    throw new Error('Multiple observers not implemented.');
+  }
+
+  observer = o;
+  emitChange();
+};
+
+exports.move = function (toX, toY) {
+  coordinates = [toX, toY];
+  emitChange();
+};
+
+},{}],297:[function(require,module,exports){
 "use strict";
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
@@ -19433,4 +25322,16 @@ var Color = (function () {
 
 module.exports = Color;
 
-},{}]},{},[161])
+},{}],298:[function(require,module,exports){
+'use strict';
+
+module.exports = {
+  React: require('react'),
+  ReactDOM: require('react-dom'),
+  Tree: require('basic-tree'),
+  Random: require('random-set'),
+  Color: require('../structures/color'),
+  DragSource: require('react-dnd').DragSource
+};
+
+},{"../structures/color":297,"basic-tree":1,"random-set":3,"react":292,"react-dnd":73,"react-dom":137}]},{},[294])

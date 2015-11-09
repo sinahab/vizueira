@@ -50,6 +50,8 @@
   "dependencies": {
     "basic-tree": "^1.0.0",
     "random-set": "^1.0.0",
-    "react": "^0.14.0"
+    "react": "^0.14.0",
+    "react-dnd": "^2.0.2",
+    "react-dnd-html5-backend": "^2.0.0"
   }
 }
