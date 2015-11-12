@@ -1,14 +1,11 @@
 var Deps = require('../structures/manifest'),
     React = require('react'),
     ReactDOM = require('react-dom'),
-    Linkable = require('./linkable'),
-    DragDropContext = require('react-dnd').DragDropContext,
-    HTML5Backend = require('react-dnd-html5-backend');    
+    Linkable = require('./linkable'); 
 
 
 var Context = React.createClass({
   getInitialState: function(){
-    console.log(this.props.coordinates)
     return{ height: this.props.height || 600, width: this.props.width || 300 }
   },
   
@@ -34,8 +31,4 @@ var Context = React.createClass({
   }
 })
 
-module.exports = DragDropContext(HTML5Backend)(Context);
-
-// Deps.ReactDOM.render(<WrappedContext height="600" width="300">
-//   </WrappedContext>,
-//   document.getElementById('game'))
+module.exports = Context;

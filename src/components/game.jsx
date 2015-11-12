@@ -1,13 +1,10 @@
 var Deps = require('../structures/manifest'),
     React = require('react'),
     ReactDOM = require('react-dom'),
-    Context = require('./context.jsx'),
-    Observe = require('./observer').observe;    
+    Context = require('./context.jsx'); 
 
 
-Observe(function (coordinates) {
   ReactDOM.render(
-    <Context coordinates={coordinates} />,
+    <Context />,
     document.getElementById('game')
   );
-});
