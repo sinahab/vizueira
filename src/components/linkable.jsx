@@ -2,23 +2,25 @@ var Deps = require('../structures/manifest'),
     React = require('react'),
     ReactDOM = require('react-dom'),
     $ = require('jquery'),
-    getXY = require('../structures/clickCoords');
+    getXY = require('../structures/clickCoords'),
+    Spore = require('../structures/spore');
 
 var Linkable = React.createClass({
   getDefaultProps: function () {
     return {
       // allow the initial position to be passed in as a prop
       coordinates: {x: 50, y: 50, r:50},
-      rel: {x:50, y:50, r:50},
       color: 'blue'
     }
   },  
   getInitialState: function() {
     return {
-      coordinates: this.props.coordinates,
+      spores: new Spore({x: 50, y: 50, r:50}),
+      rel: {x: 50, y: 50, r:50},
       color: this.props.color,
       dragging: false,
-      rel: null
+      key: 0,
+      active: null
     }
   },
   componentDidUpdate: function (props, state) {
@@ -30,17 +32,19 @@ var Linkable = React.createClass({
       document.removeEventListener('mouseup', this.onMouseUp)
     }
   },
-  onMouseDown: function (e) {
+  onMouseDown: function (spore, e) {
     // only left mouse button
 
     if (e.button !== 0) return
+
     var pos = getXY(e)
     this.setState({
       dragging: true,
       rel: {
         x: e.pageX - pos.x + (pos.x - parseInt(e.currentTarget.style.cx)),
         y: e.pageY - pos.y + (pos.y- parseInt(e.currentTarget.style.cy))
-      }
+      },
+      active: spore
     })
     e.stopPropagation()
     e.preventDefault()
@@ -53,7 +57,7 @@ var Linkable = React.createClass({
   onMouseMove: function (e) {
     if (!this.state.dragging) return
     this.setState({
-      coordinates: {
+      active: {
         x: e.pageX - this.state.rel.x,
         y: e.pageY - this.state.rel.y,
         r: this.state.coordinates.r
@@ -62,14 +66,38 @@ var Linkable = React.createClass({
     e.stopPropagation()
     e.preventDefault()
   },  
+
   render: function() {
-    return <circle id="test" style={ this.setStyle() } onMouseDown= {this.onMouseDown} ></circle>; 
+    return <g>
+              { 
+                this.flattenSpores( this.state.spores ).map(function( spore ){
+                  return spore
+                 }) 
+              }
+            </g>
   },
-  setStyle: function(drag){
+  flattenSpores: function( spores ){
+    var returned = [];
+    console.log(spores)
+    returned.push( this.createCircle( spores ) )
+
+    for( var i = 0; i< spores.length; i++ ){
+      returned.push( this.createCircle( spores[i]) )
+      if( spores[i].length > 0 ){
+        returned.concat( flattenSpores(spores[i]) )
+      }
+    }
+    return returned
+  },
+  createCircle: function( spore ){
+    this.state.key++
+    return <circle id="test" key={this.state.key} style={ this.setStyle(spore) } onMouseDown={this.onMouseDown.bind(this, spore)} ></circle>; 
+  },
+  setStyle: function(spore){
     return{
-      cx: this.state.coordinates.x,
-      cy: this.state.coordinates.y, 
-      r:  this.state.coordinates.r, 
+      cx: spore.x,
+      cy: spore.y, 
+      r:  spore.r, 
       fill: this.state.color,
       cursor: 'move'
     }

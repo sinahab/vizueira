@@ -28527,23 +28527,25 @@ var Deps = require('../structures/manifest'),
     React = require('react'),
     ReactDOM = require('react-dom'),
     $ = require('jquery'),
-    getXY = require('../structures/clickCoords');
+    getXY = require('../structures/clickCoords'),
+    Spore = require('../structures/spore');
 
 var Linkable = React.createClass({ displayName: "Linkable",
   getDefaultProps: function getDefaultProps() {
     return {
       // allow the initial position to be passed in as a prop
       coordinates: { x: 50, y: 50, r: 50 },
-      rel: { x: 50, y: 50, r: 50 },
       color: 'blue'
     };
   },
   getInitialState: function getInitialState() {
     return {
-      coordinates: this.props.coordinates,
+      spores: new Spore({ x: 50, y: 50, r: 50 }),
+      rel: { x: 50, y: 50, r: 50 },
       color: this.props.color,
       dragging: false,
-      rel: null
+      key: 0,
+      active: null
     };
   },
   componentDidUpdate: function componentDidUpdate(props, state) {
@@ -28555,20 +28557,20 @@ var Linkable = React.createClass({ displayName: "Linkable",
       document.removeEventListener('mouseup', this.onMouseUp);
     }
   },
-  onMouseDown: function onMouseDown(e) {
+  onMouseDown: function onMouseDown(spore, e) {
     // only left mouse button
 
     if (e.button !== 0) return;
+    console.log(spore);
+
     var pos = getXY(e);
-    console.log(pos);
-    // console.log(e.pageX - pos.x)
-    // console.log(e.pageY - pos.y) 
     this.setState({
       dragging: true,
       rel: {
         x: e.pageX - pos.x + (pos.x - parseInt(e.currentTarget.style.cx)),
         y: e.pageY - pos.y + (pos.y - parseInt(e.currentTarget.style.cy))
-      }
+      },
+      active: spore
     });
     e.stopPropagation();
     e.preventDefault();
@@ -28579,20 +28581,10 @@ var Linkable = React.createClass({ displayName: "Linkable",
     e.preventDefault();
   },
   onMouseMove: function onMouseMove(e) {
-    // dx = evt.clientX - currentX;
-    // dy = evt.clientY - currentY;
-    // currentMatrix[4] += dx;
-    // currentMatrix[5] += dy;
-    // newMatrix = "matrix(" + currentMatrix.join(' ') + ")";
-
-    // selectedElement.setAttributeNS(null, "transform", newMatrix);
-    // currentX = evt.clientX;
-    // currentY = evt.clientY;
-    console.log(this.state.rel.x);
-    console.log(this.state.rel.y);
+    console.log('hello');
     if (!this.state.dragging) return;
     this.setState({
-      coordinates: {
+      active: {
         x: e.pageX - this.state.rel.x,
         y: e.pageY - this.state.rel.y,
         r: this.state.coordinates.r
@@ -28601,30 +28593,44 @@ var Linkable = React.createClass({ displayName: "Linkable",
     e.stopPropagation();
     e.preventDefault();
   },
+
   render: function render() {
-    // var currentX = 0;
-    //   var currentY = 0;
-    //   var currentMatrix = 0;
-
-    //   function selectElement(evt) {
-    //     selectedElement = evt.target;
-    //     currentX = evt.clientX;
-    //     currentY = evt.clientY;
-    // currentMatrix = selectedElement.getAttributeNS(null, "transform").slice(7,-1).split(' ');
-
-    //       for(var i=0; i<currentMatrix.length; i++) {
-    //         currentMatrix[i] = parseFloat(currentMatrix[i]);
-    //       }
-    //     selectedElement.setAttributeNS(null, "onmousemove", "moveElement(evt)");
-    //   }
-
-    return React.createElement("circle", { id: "test", style: this.setStyle(), onMouseDown: this.onMouseDown });
+    return React.createElement("g", null, this.flattenSpores(this.state.spores).map(function (spore) {
+      return spore;
+    }));
   },
-  setStyle: function setStyle(drag) {
+  flattenSpores: (function (_flattenSpores) {
+    function flattenSpores(_x) {
+      return _flattenSpores.apply(this, arguments);
+    }
+
+    flattenSpores.toString = function () {
+      return _flattenSpores.toString();
+    };
+
+    return flattenSpores;
+  })(function (spores) {
+    var returned = [];
+    console.log(spores);
+    returned.push(this.createCircle(spores));
+
+    for (var i = 0; i < spores.length; i++) {
+      returned.push(this.createCircle(spores[i]));
+      if (spores[i].length > 0) {
+        returned.concat(flattenSpores(spores[i]));
+      }
+    }
+    return returned;
+  }),
+  createCircle: function createCircle(spore) {
+    this.state.key++;
+    return React.createElement("circle", { id: "test", key: this.state.key, style: this.setStyle(spore), onMouseDown: this.onMouseDown.bind(this, spore) });
+  },
+  setStyle: function setStyle(spore) {
     return {
-      cx: this.state.coordinates.x,
-      cy: this.state.coordinates.y,
-      r: this.state.coordinates.r,
+      cx: spore.x,
+      cy: spore.y,
+      r: spore.r,
       fill: this.state.color,
       cursor: 'move'
     };
@@ -28634,79 +28640,7 @@ var Linkable = React.createClass({ displayName: "Linkable",
 
 module.exports = Linkable;
 
-// var Draggable = React.createClass({
-// getDefaultProps: function () {
-//   return {
-//     // allow the initial position to be passed in as a prop
-//     initialPos: {x: 0, y: 0}
-//   }
-// },
-// getInitialState: function () {
-//   return {
-//     pos: this.props.initialPos,
-//     dragging: false,
-//     rel: null // position relative to the cursor
-//   }
-// },
-// we could get away with not having this (and just having the listeners on
-// our div), but then the experience would be possibly be janky. If there's
-// anything w/ a higher z-index that gets in the way, then you're toast,
-// etc.
-// componentDidUpdate: function (props, state) {
-//   if (this.state.dragging && !state.dragging) {
-//     document.addEventListener('mousemove', this.onMouseMove)
-//     document.addEventListener('mouseup', this.onMouseUp)
-//   } else if (!this.state.dragging && state.dragging) {
-//     document.removeEventListener('mousemove', this.onMouseMove)
-//     document.removeEventListener('mouseup', this.onMouseUp)
-//   }
-// },
-
-// calculate relative position to the mouse and set dragging=true
-// onMouseDown: function (e) {
-//   // only left mouse button
-//   if (e.button !== 0) return
-//   var pos = $(this.getDOMNode()).offset()
-//   this.setState({
-//     dragging: true,
-//     rel: {
-//       x: e.pageX - pos.left,
-//       y: e.pageY - pos.top
-//     }
-//   })
-//   e.stopPropagation()
-//   e.preventDefault()
-// },
-// onMouseUp: function (e) {
-//   this.setState({dragging: false})
-//   e.stopPropagation()
-//   e.preventDefault()
-// },
-// onMouseMove: function (e) {
-//   if (!this.state.dragging) return
-//   this.setState({
-//     pos: {
-//       x: e.pageX - this.state.rel.x,
-//       y: e.pageY - this.state.rel.y
-//     }
-//   })
-//   e.stopPropagation()
-//   e.preventDefault()
-// },
-// render: function () {
-//   // transferPropsTo will merge style & other props passed into our
-//   // component to also be on the child DIV.
-//   return this.transferPropsTo(React.DOM.div({
-//     onMouseDown: this.onMouseDown,
-//     style: {
-//       left: this.state.pos.x + 'px',
-//       top: this.state.pos.y + 'px'
-//     }
-//   }, this.props.children))
-// }
-// })
-
-},{"../structures/clickCoords":162,"../structures/manifest":164,"jquery":3,"react":160,"react-dom":5}],162:[function(require,module,exports){
+},{"../structures/clickCoords":162,"../structures/manifest":164,"../structures/spore":165,"jquery":3,"react":160,"react-dom":5}],162:[function(require,module,exports){
 "use strict";
 
 function getXY(evt) {
@@ -28815,4 +28749,40 @@ module.exports = {
   Color: require('../structures/color')
 };
 
-},{"../structures/color":163,"basic-tree":1,"random-set":4,"react":160,"react-dom":5}]},{},[161])
+},{"../structures/color":163,"basic-tree":1,"random-set":4,"react":160,"react-dom":5}],165:[function(require,module,exports){
+"use strict";
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; continue _function; } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var Spore = (function (_Array) {
+	_inherits(Spore, _Array);
+
+	function Spore(parentNode) {
+		_classCallCheck(this, Spore);
+
+		_get(Object.getPrototypeOf(Spore.prototype), "constructor", this).call(this);
+		this.parent = parentNode;
+		this.r = this.parent.r;
+		this.x = this.parent.x;
+		this.y = this.parent.y;
+	}
+
+	_createClass(Spore, [{
+		key: "explode",
+		value: function explode() {
+			return new Spore(this);
+		}
+	}]);
+
+	return Spore;
+})(Array);
+
+module.exports = Spore;
+
+},{}]},{},[161])
